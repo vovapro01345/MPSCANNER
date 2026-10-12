@@ -18,21 +18,22 @@
             <div class="scan-info">
                 📅 Сканирование выполняется <b>каждую неделю в течение выходных</b> (сб–вс).
                 Все данные подтягиваются через публичные API в реальном времени.
-                <br><small>Из-за ограничений бесплатных API проверка занимает несколько минут. Пожалуйста, подождите.</small>
+                <br><small>Из-за ограничений бесплатных API проверка занимает ~10–15 минут. Пожалуйста, подождите.</small>
             </div>
         </header>
 
         <div class="error-banner" id="errorBanner"></div>
 
-        <!-- Прогресс-бар сканирования -->
+        <!-- Прогресс-бар -->
         <div class="progress-container" id="progressContainer" style="display: none;">
             <div class="progress-info">
-                <span>Сканирование серверов...</span>
+                <span>⏳ Сканирование серверов...</span>
                 <span id="progressText">0 / 0</span>
             </div>
             <div class="progress-bar-bg">
                 <div class="progress-bar-fill" id="progressBarFill"></div>
             </div>
+            <div class="progress-current" id="progressCurrent">—</div>
         </div>
 
         <div class="controls">
@@ -41,8 +42,18 @@
                 <option value="all">Все серверы</option>
                 <option value="online">Только онлайн</option>
                 <option value="offline">Только офлайн</option>
+                <option value="with-icon">С иконкой</option>
+            </select>
+            <select id="sortSelect">
+                <option value="status">Сортировка: по статусу</option>
+                <option value="players-desc">Игроков: больше → меньше</option>
+                <option value="players-asc">Игроков: меньше → больше</option>
+                <option value="name-asc">Название: A → Z</option>
+                <option value="name-desc">Название: Z → A</option>
+                <option value="version">По версии</option>
             </select>
             <button id="refreshBtn" type="button">🔄 Обновить всё</button>
+            <button id="exportBtn" type="button" class="secondary">💾 Экспорт</button>
         </div>
 
         <div class="stats-bar">
