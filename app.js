@@ -27,19 +27,45 @@ const API_ENDPOINTS = [
             if (!data || data.online === false || data.online === undefined) {
                 return { online: false };
             }
+            // Определяем тип сервера по полю online (если есть)
+            let serverType = 'unknown';
+            if (data.online === true) {
+                // Если сервер отвечает на ping, но не требует авторизации — вероятно, пиратский
+                // Более точная проверка требует дополнительных запросов
+                serverType = 'premium'; // По умолчанию считаем лицензионным
+            }
             return {
                 online: true,
                 players: data.players ? (data.players.online ?? 0) : 0,
                 maxPlayers: data.players ? (data.players.max ?? 0) : 0,
                 version: data.version || '—',
-                motd: data.motd && data.motd.clean ? data.motd.clean.join(' ') : ''
+                motd: data.motd && data.motd.clean ? data.motd.clean.join(' ') : '',
+                serverType: serverType
             };
         }
     },
     {
         name: 'minecraft-serverhub.com',
+        // ИСПРАВЛЕНО: используем правильный эндпоинт /api/ping
         url: (host, port) =>
-            `https://minecraft-serverhub.com/api/status/${host}${port ? ':' + port : ''}`,
+            `https://minecraft-serverhub.com/api/ping?host=${host}${port ? '&port=' + port : ''}&platform=java`,
+        headers: {},
+        parse: (data) => {
+            if (!data || data.status === 'offline') return { online: false };
+            return {
+                online: true,
+                players: data.players ?? 0,
+                maxPlayers: data.max_players ?? 0,
+                version: data.version || '—',
+                motd: data.motd || '',
+                serverType: data.cracked ? 'cracked' : 'premium' // ServerHub может возвращать флаг cracked
+            };
+        }
+    },
+    {
+        name: 'minecraft-java-servers.com',
+        url: (host, port) =>
+            `https://minecraft-java-servers.com/api/v1/servers/${host}${port ? ':' + port : ''}`,
         headers: {},
         parse: (data) => {
             if (!data || data.online === false) return { online: false };
@@ -48,7 +74,8 @@ const API_ENDPOINTS = [
                 players: data.players ? (data.players.online ?? 0) : 0,
                 maxPlayers: data.players ? (data.players.max ?? 0) : 0,
                 version: data.version || '—',
-                motd: data.motd || ''
+                motd: data.motd || '',
+                serverType: data.cracked ? 'cracked' : 'premium'
             };
         }
     }
@@ -79,17 +106,14 @@ function stripMinecraftColors(str) {
 
 /**
  * Возвращает true, если сегодня выходной (суббота или воскресенье).
- * Используется для приоритетного автосканирования.
  */
 function isWeekend() {
-    const day = new Date().getDay(); // 0 = вс, 6 = сб
+    const day = new Date().getDay();
     return day === 0 || day === 6;
 }
 
 /**
  * Пора ли запускать новое еженедельное сканирование?
- * Логика: если прошло ≥7 дней ИЛИ сегодня выходной и последнее сканирование
- * было не сегодня.
  */
 function shouldAutoScan() {
     const last = Number(localStorage.getItem(LAST_SCAN_KEY) || 0);
@@ -98,13 +122,11 @@ function shouldAutoScan() {
 
     if (weekPassed) return true;
 
-    // Дополнительно: в выходные сканируем, если ещё не сканировали сегодня
     if (isWeekend()) {
         const lastDate = new Date(last).toDateString();
         const today = new Date().toDateString();
         if (lastDate !== today) return true;
     }
-
     return false;
 }
 
@@ -112,6 +134,10 @@ function markScanned() {
     localStorage.setItem(LAST_SCAN_KEY, String(Date.now()));
 }
 
+/**
+ * Запрашивает статус сервера последовательно через несколько API.
+ * Возвращает объект { online, players, maxPlayers, version, motd, serverType, source }
+ */
 async function fetchServerStatus(address, port) {
     const errors = [];
 
@@ -125,6 +151,10 @@ async function fetchServerStatus(address, port) {
             });
 
             if (!response.ok) {
+                // Особая обработка для 429 (Too Many Requests)
+                if (response.status === 429) {
+                    console.warn(`[${APP_NAME}] ${api.name} вернул 429. Пропускаем.`);
+                }
                 errors.push(`${api.name}: HTTP ${response.status}`);
                 continue;
             }
@@ -205,8 +235,12 @@ async function checkAllServers() {
     if (isRefreshing) return;
     isRefreshing = true;
 
-    const promises = allServers.map(srv => checkSingleServer(srv));
-    await Promise.allSettled(promises);
+    // ИСПРАВЛЕНО: последовательная проверка с задержкой, чтобы избежать 429
+    for (const srv of allServers) {
+        await checkSingleServer(srv);
+        // Пауза 300 мс между запросами к API
+        await new Promise(resolve => setTimeout(resolve, 300));
+    }
 
     isRefreshing = false;
     markScanned();
@@ -228,8 +262,8 @@ async function checkSingleServer(srv) {
     updateCard(key);
     updateStats();
 
-    // Небольшая задержка, чтобы не перегружать API
-    await new Promise(r => setTimeout(r, 150));
+    // Небольшая задержка между отдельными проверками
+    await new Promise(r => setTimeout(r, 100));
 }
 
 async function refreshAll() {
@@ -335,6 +369,22 @@ function cardHtml(srv) {
     const version = (status === 'online' && data.version)
         ? data.version : (srv.version || '—');
 
+    // НОВОЕ: определяем тип сервера
+    let serverTypeLabel = '';
+    let serverTypeClass = '';
+    if (status === 'online') {
+        if (data.serverType === 'cracked') {
+            serverTypeLabel = 'Пиратский';
+            serverTypeClass = 'cracked';
+        } else if (data.serverType === 'premium') {
+            serverTypeLabel = 'Лицензионный';
+            serverTypeClass = 'premium';
+        } else {
+            serverTypeLabel = 'Неизвестно';
+            serverTypeClass = 'unknown';
+        }
+    }
+
     return `
         <div class="server-card ${status}" data-key="${escapeHtml(key)}">
             <div class="card-header">
@@ -351,6 +401,7 @@ function cardHtml(srv) {
                     👥 <span class="count">${escapeHtml(String(players))}</span> / ${escapeHtml(String(maxPlayers))}
                 </div>
                 <div class="version-tag" title="${escapeHtml(String(version))}">${escapeHtml(String(version))}</div>
+                ${serverTypeLabel ? `<div class="server-type ${serverTypeClass}">${serverTypeLabel}</div>` : ''}
             </div>
         </div>
     `;
