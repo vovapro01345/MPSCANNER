@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCscanner — by Real_Studio</title>
-    <meta name="description" content="MCscanner — собственный сканер Minecraft-серверов от Real_Studio с cross-verification через публичные API.">
+    <meta name="description" content="MCscanner — собственный сканер Minecraft-серверов от Real_Studio.">
     <meta name="theme-color" content="#0f0f1a">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
@@ -13,7 +13,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MCscanner">
 
-    <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-R4WVDS98QQ"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -24,77 +23,81 @@
 </head>
 <body>
     <div class="topbar">
-        <button class="icon-btn" id="themeToggle" title="Тема (T)">🌙</button>
+        <button class="icon-btn" id="langToggle" title="RU / EN">🇷🇺</button>
+        <button class="icon-btn" id="accentBtn" title="Цвет акцента">🎨</button>
+        <button class="icon-btn" id="themeToggle" title="Тема">🌙</button>
         <button class="icon-btn" id="notifToggle" title="Уведомления">🔔</button>
-        <button class="icon-btn" id="installBtn" title="Установить приложение" style="display:none;">⬇️</button>
-        <button class="icon-btn" id="helpBtn" title="Горячие клавиши (?)">❓</button>
+        <button class="icon-btn" id="installBtn" title="Установить" style="display:none;">⬇️</button>
+        <a class="icon-btn tg-btn" id="tgBtn" href="https://t.me/Real_Studio_Game" target="_blank" rel="noopener" title="Telegram-канал">✈️</a>
+        <button class="icon-btn" id="helpBtn" title="Справка (?)">❓</button>
+    </div>
+
+    <!-- Палитра акцента -->
+    <div class="accent-picker" id="accentPicker">
+        <div class="accent-swatch" data-color="blue" style="background:#3b82f6;"></div>
+        <div class="accent-swatch" data-color="green" style="background:#10b981;"></div>
+        <div class="accent-swatch" data-color="orange" style="background:#f97316;"></div>
+        <div class="accent-swatch" data-color="pink" style="background:#ec4899;"></div>
+        <div class="accent-swatch" data-color="purple" style="background:#8b5cf6;"></div>
     </div>
 
     <div class="container">
         <header>
             <h1>⛏ MCscanner</h1>
-            <p class="subtitle">
+            <p class="subtitle" data-i18n="subtitle">
                 Собственный сканер Minecraft-серверов · <span class="brand">Real_Studio</span>
             </p>
             <div class="scan-info">
-                🔬 <b>Свой движок сканирования</b>: параллельные пробы, cross-verification, медиана значений, retry с backoff.
-                API используются как <b>пробы</b> для проверки работы серверов.
-                <br><small>Задержка 1.5 сек · 2–3 пробы на сервер · работает офлайн (PWA)</small>
+                🔬 <b data-i18n="infoStrong">Свой движок сканирования</b>:
+                <span data-i18n="infoText">параллельные пробы, cross-verification, медиана значений, retry с backoff.</span>
+                <br><small data-i18n="infoSmall">Задержка 1.5 сек · 2–3 пробы на сервер · работает офлайн (PWA)</small>
             </div>
         </header>
 
         <div class="error-banner" id="errorBanner"></div>
 
-        <!-- Панель состояния сканера -->
         <div class="scanner-panel" id="scannerPanel" style="display:none;">
-            <div class="sp-row">
-                <span class="sp-label">⏳ Прогресс:</span>
-                <span class="sp-value" id="spProgress">0 / 0</span>
-            </div>
-            <div class="sp-row">
-                <span class="sp-label">🎯 Согласие проб:</span>
-                <span class="sp-value" id="spAgreement">—</span>
-            </div>
-            <div class="sp-row">
-                <span class="sp-label">📡 Средний отклик:</span>
-                <span class="sp-value" id="spLatency">—</span>
-            </div>
-            <div class="sp-row">
-                <span class="sp-label">✅ Проверено:</span>
-                <span class="sp-value" id="spVerified">0</span>
-            </div>
-            <div class="sp-row">
-                <span class="sp-label">⚠️ Конфликты:</span>
-                <span class="sp-value" id="spConflicts">0</span>
-            </div>
+            <div class="sp-row"><span class="sp-label" data-i18n="spProgress">⏳ Прогресс:</span><span class="sp-value" id="spProgress">0 / 0</span></div>
+            <div class="sp-row"><span class="sp-label" data-i18n="spAgree">🎯 Согласие проб:</span><span class="sp-value" id="spAgreement">—</span></div>
+            <div class="sp-row"><span class="sp-label" data-i18n="spLatency">📡 Средний отклик:</span><span class="sp-value" id="spLatency">—</span></div>
+            <div class="sp-row"><span class="sp-label" data-i18n="spVerified">✅ Проверено:</span><span class="sp-value" id="spVerified">0</span></div>
+            <div class="sp-row"><span class="sp-label" data-i18n="spConflicts">⚠️ Конфликты:</span><span class="sp-value" id="spConflicts">0</span></div>
         </div>
 
         <div class="progress-container" id="progressContainer" style="display: none;">
             <div class="progress-info">
-                <span>⏳ Сканирование...</span>
+                <span data-i18n="scanning">⏳ Сканирование...</span>
                 <span id="progressText">0 / 0</span>
             </div>
-            <div class="progress-bar-bg">
-                <div class="progress-bar-fill" id="progressBarFill"></div>
-            </div>
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBarFill"></div></div>
             <div class="progress-current" id="progressCurrent">—</div>
         </div>
 
+        <!-- Пресеты -->
+        <div class="presets" id="presets">
+            <button class="preset-btn" data-preset="all" data-i18n="presetAll">📋 Все</button>
+            <button class="preset-btn" data-preset="online-players" data-i18n="presetOnlinePlayers">🔥 Онлайн + игроки</button>
+            <button class="preset-btn" data-preset="new" data-i18n="presetNew">🆕 Новые</button>
+            <button class="preset-btn" data-preset="anomalies" data-i18n="presetAnomalies">⚠️ Аномалии</button>
+            <button class="preset-btn" data-preset="dead-ips" data-i18n="presetDead">💀 Мёртвые IP</button>
+            <button class="preset-btn" data-preset="favorites" data-i18n="presetFav">⭐ Избранные</button>
+        </div>
+
         <div class="controls">
-            <input type="text" id="searchInput" placeholder="Поиск... (нажмите /)" autocomplete="off">
+            <input type="text" id="searchInput" placeholder="Поиск... (/)" autocomplete="off" data-i18n-placeholder="searchPh">
             <select id="filterSelect">
-                <option value="all">Все серверы</option>
-                <option value="online">Только онлайн</option>
-                <option value="offline">Только офлайн</option>
-                <option value="favorites">⭐ Избранные</option>
-                <option value="with-icon">🖼️ С иконкой</option>
-                <option value="has-players">👥 С игроками</option>
-                <option value="discord">💬 С Discord</option>
-                <option value="confident">🎯 С высокой уверенностью</option>
-                <option value="conflicts">⚠️ Спорные</option>
+                <option value="all" data-i18n="filterAll">Все серверы</option>
+                <option value="online" data-i18n="filterOnline">Только онлайн</option>
+                <option value="offline" data-i18n="filterOffline">Только офлайн</option>
+                <option value="favorites" data-i18n="filterFav">⭐ Избранные</option>
+                <option value="with-icon" data-i18n="filterIcon">🖼️ С иконкой</option>
+                <option value="has-players" data-i18n="filterPlayers">👥 С игроками</option>
+                <option value="discord" data-i18n="filterDiscord">💬 С Discord</option>
+                <option value="confident" data-i18n="filterConf">🎯 С высокой уверенностью</option>
+                <option value="conflicts" data-i18n="filterConflict">⚠️ Спорные</option>
             </select>
             <select id="tagFilter">
-                <option value="">🏷️ Любой тег</option>
+                <option value="" data-i18n="tagAny">🏷️ Любой тег</option>
                 <option value="survival">Survival</option>
                 <option value="pvp">PvP</option>
                 <option value="anarchy">Anarchy</option>
@@ -111,7 +114,7 @@
                 <option value="bedrock">Bedrock</option>
             </select>
             <select id="versionFilter">
-                <option value="">🌐 Любая версия</option>
+                <option value="" data-i18n="verAny">🌐 Любая версия</option>
                 <option value="1.21">1.21.x</option>
                 <option value="1.20">1.20.x</option>
                 <option value="1.19">1.19.x</option>
@@ -120,51 +123,67 @@
                 <option value="1.12">1.12.x</option>
                 <option value="1.8">1.8.x</option>
             </select>
-            <select id="sortSelect">
-                <option value="status">Сортировка: по статусу</option>
-                <option value="confidence-desc">🎯 По уверенности</option>
-                <option value="fill-desc">🔥 По заполненности</option>
-                <option value="players-desc">Игроков: больше → меньше</option>
-                <option value="players-asc">Игроков: меньше → больше</option>
-                <option value="name-asc">Название: A → Z</option>
-                <option value="name-desc">Название: Z → A</option>
-                <option value="version">По версии</option>
+            <select id="countryFilter">
+                <option value="" data-i18n="countryAny">🌍 Любая страна</option>
             </select>
+            <select id="sortSelect">
+                <option value="status" data-i18n="sortStatus">Сортировка: по статусу</option>
+                <option value="confidence-desc" data-i18n="sortConf">🎯 По уверенности</option>
+                <option value="uptime-desc" data-i18n="sortUptime">📈 По uptime</option>
+                <option value="fill-desc" data-i18n="sortFill">🔥 По заполненности</option>
+                <option value="players-desc" data-i18n="sortPlayersDesc">Игроков: больше → меньше</option>
+                <option value="players-asc" data-i18n="sortPlayersAsc">Игроков: меньше → больше</option>
+                <option value="name-asc" data-i18n="sortNameAsc">Название: A → Z</option>
+                <option value="name-desc" data-i18n="sortNameDesc">Название: Z → A</option>
+                <option value="version" data-i18n="sortVersion">По версии</option>
+            </select>
+            <input type="number" id="playersMin" class="range-input" placeholder="Min игроков" min="0" value="0" title="Минимум игроков">
+            <input type="number" id="playersMax" class="range-input" placeholder="Max игроков" min="0" value="10000" title="Максимум игроков">
         </div>
 
         <div class="actions">
-            <button id="refreshBtn" type="button" class="primary">🔄 Обновить всё</button>
-            <button id="stopBtn" type="button" class="secondary" style="display:none;">⏹ Стоп</button>
-            <button id="shareBtn" type="button" class="secondary">🔗 Поделиться</button>
-            <button id="renameModeBtn" type="button" class="secondary">✏️ Имена</button>
-            <button id="exportBtn" type="button" class="secondary">💾 JSON</button>
-            <button id="exportCsvBtn" type="button" class="secondary">📊 CSV</button>
-            <button id="historyBtn" type="button" class="secondary">📜 История</button>
-            <button id="compareBtn" type="button" class="secondary">🔀 Сравнить</button>
-            <button id="logBtn" type="button" class="secondary">📋 Лог</button>
-            <button id="probeStatsBtn" type="button" class="secondary">📡 Пробы</button>
-            <button id="clearCacheBtn" type="button" class="secondary" title="Очистить кэш сканера">🗑️ Кэш</button>
+            <button id="refreshBtn" type="button" class="primary" data-i18n="btnRefresh">🔄 Обновить всё</button>
+            <button id="stopBtn" type="button" class="secondary" style="display:none;" data-i18n="btnStop">⏹ Стоп</button>
+            <button id="viewGridBtn" type="button" class="secondary view-btn active" data-view="grid" title="Плитка">🔳</button>
+            <button id="viewTableBtn" type="button" class="secondary view-btn" data-view="table" title="Таблица">📊</button>
+            <button id="viewGroupBtn" type="button" class="secondary view-btn" data-view="grouped" title="Группы по IP">📁</button>
+            <button id="shareBtn" type="button" class="secondary" data-i18n="btnShare">🔗 Поделиться</button>
+            <button id="copyOnlineBtn" type="button" class="secondary" data-i18n="btnCopyOnline">📋 Онлайн</button>
+            <button id="diffBtn" type="button" class="secondary" data-i18n="btnDiff">🔀 Дифф</button>
+            <button id="renameModeBtn" type="button" class="secondary" data-i18n="btnRename">✏️ Имена</button>
+            <button id="exportBtn" type="button" class="secondary" data-i18n="btnJson">💾 JSON</button>
+            <button id="exportCsvBtn" type="button" class="secondary" data-i18n="btnCsv">📊 CSV</button>
+            <button id="historyBtn" type="button" class="secondary" data-i18n="btnHistory">📜 История</button>
+            <button id="compareBtn" type="button" class="secondary" data-i18n="btnCompare">🔀 Сравнить</button>
+            <button id="logBtn" type="button" class="secondary" data-i18n="btnLog">📋 Лог</button>
+            <button id="probeStatsBtn" type="button" class="secondary" data-i18n="btnProbes">📡 Пробы</button>
+            <button id="geoBtn" type="button" class="secondary" data-i18n="btnGeo">🌍 Гео</button>
+            <button id="clearCacheBtn" type="button" class="secondary" data-i18n="btnCache">🗑️ Кэш</button>
         </div>
 
         <div class="stats-bar">
-            <div class="stat"><div class="stat-value" id="totalCount">—</div><div class="stat-label">Всего</div></div>
-            <div class="stat"><div class="stat-value" id="onlineCount" style="color:#22c55e;">—</div><div class="stat-label">Онлайн</div></div>
-            <div class="stat"><div class="stat-value" id="offlineCount" style="color:#ef4444;">—</div><div class="stat-label">Офлайн</div></div>
-            <div class="stat"><div class="stat-value" id="playersTotal" style="color:#3b82f6;">—</div><div class="stat-label">Игроков</div></div>
-            <div class="stat"><div class="stat-value" id="avgConfidence" style="color:#6ee7b7;">—</div><div class="stat-label">Ср. уверенность</div></div>
+            <div class="stat"><div class="stat-value" id="totalCount">—</div><div class="stat-label" data-i18n="statTotal">Всего</div></div>
+            <div class="stat"><div class="stat-value" id="onlineCount" style="color:#22c55e;">—</div><div class="stat-label" data-i18n="statOnline">Онлайн</div></div>
+            <div class="stat"><div class="stat-value" id="offlineCount" style="color:#ef4444;">—</div><div class="stat-label" data-i18n="statOffline">Офлайн</div></div>
+            <div class="stat"><div class="stat-value" id="playersTotal" style="color:#3b82f6;">—</div><div class="stat-label" data-i18n="statPlayers">Игроков</div></div>
+            <div class="stat"><div class="stat-value" id="avgConfidence" style="color:#6ee7b7;">—</div><div class="stat-label" data-i18n="statConf">Ср. уверенность</div></div>
+            <div class="stat"><div class="stat-value" id="deadIpsCount" style="color:#ef4444;">—</div><div class="stat-label" data-i18n="statDead">Мёртвых IP</div></div>
         </div>
 
         <div class="server-grid" id="serverGrid">
-            <div class="empty-state">Загрузка серверов...</div>
+            <div class="empty-state" data-i18n="loading">Загрузка серверов...</div>
         </div>
 
         <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
-            <button id="loadMoreBtn" class="secondary">⬇️ Показать ещё <span id="loadMoreCount"></span></button>
+            <button id="loadMoreBtn" class="secondary" data-i18n="loadMore">⬇️ Показать ещё <span id="loadMoreCount"></span></button>
         </div>
 
         <footer class="footer">
             <div class="footer-line">
-                <b>MCscanner</b> © <span id="year"></span> — создан <span class="brand">Real_Studio</span>
+                <b>MCscanner</b> © <span id="year"></span> — <span data-i18n="createdBy">создан</span> <span class="brand">Real_Studio</span>
+            </div>
+            <div class="footer-line">
+                📢 <a href="https://t.me/Real_Studio_Game" target="_blank" rel="noopener" class="tg-link">Telegram-канал Real_Studio</a>
             </div>
             <div class="footer-line" id="lastUpdate">—</div>
         </footer>
