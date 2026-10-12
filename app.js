@@ -1,7 +1,7 @@
 // ============================================================
-//  MCscanner — by Real_Studio — v2.0
-//  + История, PWA, уведомления, теги, QR, сравнение, лог,
-//  + кастомные имена, CSV, Bedrock, клавиши, кэш, GA
+//  MCscanner — by Real_Studio — v3.0
+//  Собственный движок сканирования + cross-verification
+//  API используются как "пробы" для проверки работы серверов
 // ============================================================
 
 const APP_NAME = 'MCscanner';
@@ -16,26 +16,32 @@ const LS = {
     names: 'mcscanner_names',
     history: 'mcscanner_history',
     notif: 'mcscanner_notif',
-    progress: 'mcscanner_progress',
-    knownStatus: 'mcscanner_known_status',
     logs: 'mcscanner_logs'
 };
 
-const API_DELAY_MS = 1500;
-const OFFLINE_CACHE_MS = 10 * 60 * 1000;
-const RESCAN_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+const SCANNER_CONFIG = {
+    delayMs: 1500,           // задержка между серверами
+    cacheTTL: 5 * 60 * 1000, // TTL кэша результатов
+    probeTimeoutMs: 12000,   // таймаут одной пробы
+    retryMax: 1,             // 1 retry при ошибке
+    retryBackoffMs: [2000],  // backoff перед retry
+    autoScanIntervalMs: 7 * 24 * 60 * 60 * 1000
+};
+
 const HISTORY_MAX = 30;
 const LOGS_MAX = 300;
 const PAGE_SIZE = 40;
 
 // ============================================================
-//  API ENDPOINTS
+//  ПРОБЫ (API endpoints) — только для проверки работы серверов
 // ============================================================
-const API_ENDPOINTS = [
+const PROBES = [
     {
+        id: 'mcsrvstat',
         name: 'mcsrvstat.us',
+        role: 'primary',
         url: (h, p) => `https://api.mcsrvstat.us/3/${h}${p && p !== 25565 ? ':' + p : ''}`,
-        headers: { 'User-Agent': `${APP_NAME}/2.0 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/3.0 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false || d.online === undefined) return { online: false };
             return {
@@ -50,7 +56,9 @@ const API_ENDPOINTS = [
         }
     },
     {
+        id: 'mcstatus',
         name: 'mcstatus.io',
+        role: 'secondary',
         url: (h, p) => `https://api.mcstatus.io/v2/status/java/${h}${p ? ':' + p : ''}`,
         headers: {},
         parse: (d) => {
@@ -67,7 +75,9 @@ const API_ENDPOINTS = [
         }
     },
     {
+        id: 'mcapi',
         name: 'mcapi.us',
+        role: 'tiebreaker',
         url: (h, p) => `https://mcapi.us/server/status?ip=${encodeURIComponent(h)}${p && p !== 25565 ? '&port=' + p : ''}`,
         headers: {},
         parse: (d) => {
@@ -82,39 +92,292 @@ const API_ENDPOINTS = [
                 playerList: d.players?.sample || null
             };
         }
+    },
+    {
+        id: 'bedrock',
+        name: 'mcsrvstat.us (bedrock)',
+        role: 'bedrock',
+        url: (h) => `https://api.mcsrvstat.us/bedrock/3/${h}:19132`,
+        headers: { 'User-Agent': `${APP_NAME}/3.0 (by ${APP_AUTHOR})` },
+        parse: (d) => {
+            if (!d || d.online === false) return { online: false };
+            return {
+                online: true,
+                players: d.players?.online ?? 0,
+                maxPlayers: d.players?.max ?? 0,
+                version: d.version || '—',
+                motd: d.motd?.clean ? d.motd.clean.join(' ') : '',
+                icon: null,
+                playerList: null
+            };
+        }
     }
 ];
 
-// Bedrock — отдельный endpoint на mcsrvstat.us
-const BEDROCK_API = {
-    name: 'mcsrvstat.us (bedrock)',
-    url: (h, p) => `https://api.mcsrvstat.us/bedrock/3/${h}${p && p !== 19132 ? ':' + p : ''}`,
-    headers: { 'User-Agent': `${APP_NAME}/2.0 (by ${APP_AUTHOR})` },
-    parse: (d) => {
-        if (!d || d.online === false) return { online: false };
+// ============================================================
+//  ЯДРО СКАНЕРА — наш собственный движок
+// ============================================================
+class ServerScanner {
+    constructor(config) {
+        this.config = { ...SCANNER_CONFIG, ...config };
+        this.cache = new Map();          // key -> { t, result }
+        this.probeStats = new Map();     // probeId -> { ok, fail, totalMs }
+        this.events = {};
+        this.aborted = false;
+        this.running = false;
+        PROBES.forEach(p => this.probeStats.set(p.id, { ok: 0, fail: 0, totalMs: 0 }));
+    }
+
+    on(evt, cb) {
+        (this.events[evt] ||= []).push(cb);
+        return this;
+    }
+    emit(evt, data) {
+        (this.events[evt] || []).forEach(cb => { try { cb(data); } catch {} });
+    }
+
+    // --- Одна проба с таймаутом ---
+    async queryProbe(probe, address, port) {
+        const t0 = performance.now();
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), this.config.probeTimeoutMs);
+
+        try {
+            const url = probe.url(address, port);
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json', ...probe.headers },
+                signal: controller.signal,
+                cache: 'no-store'
+            });
+            clearTimeout(timer);
+            const ms = Math.round(performance.now() - t0);
+
+            if (!res.ok) {
+                return { probeId: probe.id, probeName: probe.name, ok: false, error: `HTTP ${res.status}`, ms };
+            }
+
+            const data = await res.json();
+            const parsed = probe.parse(data);
+            return { probeId: probe.id, probeName: probe.name, ok: true, data: parsed, ms };
+        } catch (err) {
+            clearTimeout(timer);
+            return {
+                probeId: probe.id, probeName: probe.name, ok: false,
+                error: err.name === 'AbortError' ? 'timeout' : err.message,
+                ms: Math.round(performance.now() - t0)
+            };
+        }
+    }
+
+    // --- Проба с retry и backoff ---
+    async probeWithRetry(probe, address, port) {
+        let lastResult;
+        for (let attempt = 0; attempt <= this.config.retryMax; attempt++) {
+            const result = await this.queryProbe(probe, address, port);
+            this.recordProbeStats(probe.id, result);
+            if (result.ok) return result;
+            lastResult = result;
+            if (attempt < this.config.retryMax) {
+                const backoff = this.config.retryBackoffMs[attempt] || 2000;
+                await new Promise(r => setTimeout(r, backoff));
+            }
+        }
+        return lastResult;
+    }
+
+    recordProbeStats(probeId, result) {
+        const s = this.probeStats.get(probeId) || { ok: 0, fail: 0, totalMs: 0 };
+        if (result.ok) s.ok++; else s.fail++;
+        s.totalMs += result.ms;
+        this.probeStats.set(probeId, s);
+    }
+
+    // --- Cross-verification: сверка ответов проб ---
+    crossVerify(results) {
+        const successful = results.filter(r => r.ok && r.data);
+        const failed = results.filter(r => !r.ok);
+
+        if (successful.length === 0) {
+            return {
+                online: false,
+                confidence: 0,
+                verified: false,
+                conflict: false,
+                probes: results.map(r => this.probeInfo(r)),
+                reason: 'no_probe_succeeded'
+            };
+        }
+
+        // Считаем голоса
+        const onlineVotes = successful.filter(r => r.data.online).length;
+        const offlineVotes = successful.length - onlineVotes;
+        const decision = onlineVotes > offlineVotes
+            ? true
+            : offlineVotes > onlineVotes
+                ? false
+                : successful[0].data.online; // ничья → первый
+
+        const agreeing = successful.filter(r => !!r.data.online === decision);
+        const disagreeing = successful.filter(r => !!r.data.online !== decision);
+
+        // Confidence = доля согласных среди всех ответивших
+        const confidence = Math.round((agreeing.length / successful.length) * 100);
+
+        // Конфликт = есть disagreement среди успешных проб
+        const conflict = disagreeing.length > 0;
+
+        // Верификация: 2+ успешных проб, из них 2+ согласны
+        const verified = successful.length >= 2 && agreeing.length >= 2;
+
+        if (!decision) {
+            return {
+                online: false,
+                confidence,
+                verified,
+                conflict,
+                probes: results.map(r => this.probeInfo(r, decision)),
+                agreeCount: agreeing.length,
+                totalCount: successful.length
+            };
+        }
+
+        // Агрегируем данные через медиану (устойчиво к выбросам)
+        const onlineData = agreeing.filter(r => r.data.online).map(r => r.data);
+        const players = this.median(onlineData.map(d => d.players).filter(n => typeof n === 'number'));
+        const maxPlayers = this.median(onlineData.map(d => d.maxPlayers).filter(n => typeof n === 'number'));
+
+        const icon = onlineData.find(d => d.icon)?.icon || null;
+        const version = onlineData.find(d => d.version && d.version !== '—')?.version || '—';
+        const motd = onlineData.find(d => d.motd)?.motd || '';
+        const playerList = onlineData.find(d => Array.isArray(d.playerList) && d.playerList.length > 0)?.playerList || null;
+
         return {
             online: true,
-            players: d.players?.online ?? 0,
-            maxPlayers: d.players?.max ?? 0,
-            version: d.version || '—',
-            motd: d.motd?.clean ? d.motd.clean.join(' ') : '',
-            icon: null,
-            playerList: null
+            players, maxPlayers, version, motd, icon, playerList,
+            confidence, verified, conflict,
+            probes: results.map(r => this.probeInfo(r, decision)),
+            agreeCount: agreeing.length,
+            totalCount: successful.length,
+            failedCount: failed.length
         };
     }
-};
+
+    probeInfo(result, decision) {
+        if (!result.ok) {
+            return { id: result.probeId, name: result.probeName, status: 'failed', error: result.error, ms: result.ms };
+        }
+        const agrees = typeof decision === 'boolean' && (!!result.data.online === decision);
+        return {
+            id: result.probeId,
+            name: result.probeName,
+            status: typeof decision === 'boolean' ? (agrees ? 'agree' : 'disagree') : 'ok',
+            online: result.data.online,
+            ms: result.ms
+        };
+    }
+
+    median(arr) {
+        if (arr.length === 0) return null;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+    }
+
+    // --- Сканирование одного сервера ---
+    async scanServer(server) {
+        const key = `${server.address}:${server.port}`;
+
+        // Проверка кэша
+        const cached = this.cache.get(key);
+        if (cached && (Date.now() - cached.t) < this.config.cacheTTL) {
+            const result = { ...cached.result, fromCache: true };
+            this.emit('server:scanned', { server, result });
+            return result;
+        }
+
+        this.emit('server:scanning', { server });
+
+        const primary = PROBES.find(p => p.role === 'primary');
+        const secondary = PROBES.find(p => p.role === 'secondary');
+        const tiebreaker = PROBES.find(p => p.role === 'tiebreaker');
+
+        // Параллельно: primary + secondary
+        const [r1, r2] = await Promise.all([
+            this.probeWithRetry(primary, server.address, server.port),
+            this.probeWithRetry(secondary, server.address, server.port)
+        ]);
+
+        let allResults = [r1, r2];
+
+        // Проверяем, нужен ли tiebreaker
+        const bothOk = r1.ok && r2.ok;
+        const agree = bothOk && !!r1.data.online === !!r2.data.online;
+        const needTiebreaker = !bothOk || !agree;
+
+        if (needTiebreaker && tiebreaker) {
+            const r3 = await this.probeWithRetry(tiebreaker, server.address, server.port);
+            allResults.push(r3);
+        }
+
+        // Cross-verification
+        const verified = this.crossVerify(allResults);
+        const result = { ...verified, scannedAt: Date.now() };
+
+        // Кэшируем
+        this.cache.set(key, { t: Date.now(), result });
+
+        this.emit('server:scanned', { server, result });
+        return result;
+    }
+
+    // --- Сканирование всех серверов ---
+    async scanAll(servers) {
+        if (this.running) return;
+        this.running = true;
+        this.aborted = false;
+
+        const total = servers.length;
+        let done = 0;
+
+        this.emit('scan:start', { total });
+
+        for (const server of servers) {
+            if (this.aborted) break;
+
+            try {
+                await this.scanServer(server);
+            } catch (err) {
+                this.emit('server:error', { server, error: err.message });
+            }
+
+            done++;
+            this.emit('scan:progress', { done, total, server });
+
+            if (done < total && !this.aborted) {
+                await new Promise(r => setTimeout(r, this.config.delayMs));
+            }
+        }
+
+        this.running = false;
+        this.emit('scan:end', { done, total, aborted: this.aborted });
+    }
+
+    abort() { this.aborted = true; }
+    clearCache() { this.cache.clear(); }
+    getProbeStats() { return Object.fromEntries(this.probeStats); }
+}
 
 // ============================================================
 //  СОСТОЯНИЕ
 // ============================================================
 let allServers = [];
-let serverStatuses = {};
-let lastCheckTimes = {};
-let isRefreshing = false;
+let serverResults = {}; // key -> result от сканера
+let scanner = null;
 let currentFiltered = [];
 let displayedCount = 0;
 let renameMode = false;
-let bedrockMap = {}; // key -> boolean, поддерживает ли Bedrock
+let bedrockSupport = {}; // key -> bool
+let scanMetrics = { agreeSum: 0, agreeCount: 0, latencySum: 0, latencyCount: 0, conflicts: 0, verified: 0 };
 
 // ============================================================
 //  УТИЛИТЫ
@@ -136,7 +399,7 @@ function isWeekend() {
 function shouldAutoScan() {
     const last = Number(localStorage.getItem(LS.lastScan) || 0);
     const now = Date.now();
-    if ((now - last) >= RESCAN_INTERVAL_MS) return true;
+    if ((now - last) >= SCANNER_CONFIG.autoScanIntervalMs) return true;
     if (isWeekend()) {
         const ld = new Date(last).toDateString();
         const td = new Date().toDateString();
@@ -146,14 +409,13 @@ function shouldAutoScan() {
 }
 function markScanned() { localStorage.setItem(LS.lastScan, String(Date.now())); }
 
-// ---- Storage helpers ----
 function lsGet(key, fallback) {
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
     catch { return fallback; }
 }
 function lsSet(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
-// ---- Favorites ----
+// Favorites
 const getFavorites = () => lsGet(LS.favorites, []);
 const isFavorite = (k) => getFavorites().includes(k);
 function toggleFavorite(k) {
@@ -164,7 +426,7 @@ function toggleFavorite(k) {
     return isFavorite(k);
 }
 
-// ---- Last seen ----
+// Last seen
 const getLastSeenMap = () => lsGet(LS.lastSeen, {});
 function updateLastSeen(k, online) {
     if (!online) return;
@@ -185,7 +447,7 @@ function formatLastSeen(ts) {
     return new Date(ts).toLocaleDateString('ru-RU');
 }
 
-// ---- Custom names ----
+// Custom names
 const getCustomNames = () => lsGet(LS.names, {});
 function setCustomName(k, name) {
     const m = getCustomNames();
@@ -194,7 +456,7 @@ function setCustomName(k, name) {
 }
 function getCustomName(k) { return getCustomNames()[k] || null; }
 
-// ---- Notifications ----
+// Notifications
 function notifEnabled() { return lsGet(LS.notif, false) === true; }
 async function toggleNotifications() {
     if (notifEnabled()) {
@@ -203,37 +465,27 @@ async function toggleNotifications() {
         updateNotifBtn();
         return;
     }
-    if (!('Notification' in window)) {
-        showToast('❌ Уведомления не поддерживаются');
-        return;
-    }
+    if (!('Notification' in window)) { showToast('❌ Не поддерживается'); return; }
     const perm = await Notification.requestPermission();
-    if (perm === 'granted') {
-        lsSet(LS.notif, true);
-        showToast('🔔 Уведомления включены');
-    } else {
-        showToast('❌ Разрешение не получено');
-    }
+    if (perm === 'granted') { lsSet(LS.notif, true); showToast('🔔 Уведомления включены'); }
+    else showToast('❌ Разрешение не получено');
     updateNotifBtn();
 }
 function updateNotifBtn() {
     const btn = document.getElementById('notifToggle');
     btn.classList.toggle('active', notifEnabled());
     btn.textContent = notifEnabled() ? '🔔' : '🔕';
-    btn.title = notifEnabled() ? 'Уведомления вкл.' : 'Уведомления выкл.';
 }
 function notify(title, body) {
     if (!notifEnabled()) return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    try { new Notification(title, { body, icon: './manifest.json' }); } catch {}
+    try { new Notification(title, { body }); } catch {}
 }
 
-// ---- Theme ----
+// Theme
 function applyTheme() {
     let theme = localStorage.getItem(LS.theme);
-    if (!theme) {
-        theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-    }
+    if (!theme) theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
     document.body.classList.toggle('light', theme === 'light');
     document.getElementById('themeToggle').textContent = theme === 'light' ? '☀️' : '🌙';
 }
@@ -241,10 +493,9 @@ function toggleTheme() {
     const cur = document.body.classList.contains('light') ? 'light' : 'dark';
     localStorage.setItem(LS.theme, cur === 'light' ? 'dark' : 'light');
     applyTheme();
-    gtag('event', 'theme_toggle');
 }
 
-// ---- Sound ----
+// Sound
 function playBeep() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -258,33 +509,32 @@ function playBeep() {
     } catch {}
 }
 
-// ---- Tags (парсинг MOTD) ----
+// Tags
 const TAG_KEYWORDS = {
     survival: ['survival', 'выживание', 'smp'],
-    pvp: ['pvp', 'crystal pvp', 'анархия', 'кристал'],
+    pvp: ['pvp', 'crystal pvp', 'кристал'],
     anarchy: ['anarchy', 'анархия', 'hvh'],
     skyblock: ['skyblock', 'скайблок', 'sky block'],
     creative: ['creative', 'креатив'],
     modded: ['modded', 'forge', 'fabric', 'neoforge', 'atm', 'cobblemon', 'create', 'gregtech'],
     vanilla: ['vanilla', 'ванилла', 'ванильный'],
     hardcore: ['hardcore', 'хардкор'],
-    rpg: ['rpg', 'ролевая', 'roleplay'],
-    minigames: ['minigames', 'мини-игры', 'mini games', 'bedwars', 'skywars'],
+    rpg: ['rpg', 'ролевая'],
+    minigames: ['minigames', 'мини-игры', 'bedwars', 'skywars'],
     towny: ['towny', 'город'],
-    factions: ['factions', 'кланы', 'faction'],
+    factions: ['factions', 'кланы'],
     prison: ['prison', 'тюрьма'],
     bedrock: ['bedrock', 'бедрок', 'crossplay', 'cross-play']
 };
 function extractTags(motd, version) {
     const text = ((motd || '') + ' ' + (version || '')).toLowerCase();
     const tags = [];
-    for (const [tag, keywords] of Object.entries(TAG_KEYWORDS)) {
-        if (keywords.some(k => text.includes(k))) tags.push(tag);
+    for (const [tag, kws] of Object.entries(TAG_KEYWORDS)) {
+        if (kws.some(k => text.includes(k))) tags.push(tag);
     }
     return tags;
 }
 
-// ---- Discord extract ----
 function extractDiscord(motd) {
     if (!motd) return null;
     const m = motd.match(/discord(?:\.gg|\.com\/invite|app\.com\/invite)\/([a-zA-Z0-9]+)/i);
@@ -293,7 +543,7 @@ function extractDiscord(motd) {
     return m2 ? m2[1] : null;
 }
 
-// ---- Logs ----
+// Logs
 const getLogs = () => lsGet(LS.logs, []);
 function addLog(level, msg) {
     const logs = getLogs();
@@ -302,20 +552,16 @@ function addLog(level, msg) {
     lsSet(LS.logs, logs);
 }
 
-// ---- History ----
+// History
 const getHistory = () => lsGet(LS.history, []);
 function saveHistory() {
     const snapshot = {
         t: Date.now(),
         total: allServers.length,
-        online: allServers.filter(s => serverStatuses[serverKey(s)]?.status === 'online').length,
+        online: allServers.filter(s => serverResults[serverKey(s)]?.online === true).length,
         servers: allServers.map(s => {
-            const st = serverStatuses[serverKey(s)];
-            return {
-                k: serverKey(s),
-                online: st?.status === 'online',
-                players: st?.data?.players ?? 0
-            };
+            const r = serverResults[serverKey(s)];
+            return { k: serverKey(s), online: r?.online === true, players: r?.players ?? 0, confidence: r?.confidence ?? 0 };
         })
     };
     const h = getHistory();
@@ -324,77 +570,74 @@ function saveHistory() {
     lsSet(LS.history, h);
 }
 
-// ---- Progress save/resume ----
-function saveProgress(idx) {
-    if (isRefreshing) lsSet(LS.progress, { idx, t: Date.now() });
-}
-function clearProgress() { localStorage.removeItem(LS.progress); }
-function loadProgress() {
-    const p = lsGet(LS.progress, null);
-    if (!p || (Date.now() - p.t) > 30 * 60 * 1000) return null;
-    return p;
-}
-
-// ---- Known status (для уведомлений о падении) ----
-const getKnownStatus = () => lsGet(LS.knownStatus, {});
-function updateKnownStatus(key, online) {
-    const m = getKnownStatus();
-    const prev = m[key];
-    m[key] = online;
-    lsSet(LS.knownStatus, m);
-    return prev;
-}
-
 // ============================================================
-//  API FETCH
+//  SCANNER SETUP
 // ============================================================
-async function fetchServerStatus(address, port) {
-    const errors = [];
-    for (const api of API_ENDPOINTS) {
-        try {
-            const url = api.url(address, port);
-            const t0 = performance.now();
-            const response = await fetch(url, {
-                headers: { 'Accept': 'application/json', ...api.headers },
-                signal: AbortSignal.timeout(12000)
-            });
-            const dt = Math.round(performance.now() - t0);
+function createScanner() {
+    const s = new ServerScanner();
 
-            if (!response.ok) {
-                addLog('warn', `${api.name} ${response.status} (${dt}ms) → ${address}:${port}`);
-                errors.push(`${api.name}: ${response.status}`);
-                continue;
-            }
+    s.on('scan:start', ({ total }) => {
+        addLog('ok', `Сканер запущен: ${total} серверов`);
+        resetMetrics();
+    });
 
-            const data = await response.json();
-            const parsed = api.parse(data);
-            addLog('ok', `${api.name} (${dt}ms) → ${address}:${port}`);
+    s.on('server:scanning', ({ server }) => {
+        const key = serverKey(server);
+        serverResults[key] = { ...(serverResults[key] || {}), _scanning: true };
+        updateCard(key);
+    });
 
-            if (parsed.online === false) return { online: false, source: api.name };
-            return { ...parsed, source: api.name };
-        } catch (err) {
-            addLog('err', `${api.name} → ${err.message} (${address}:${port})`);
-            errors.push(`${api.name}: ${err.message}`);
+    s.on('server:scanned', ({ server, result }) => {
+        const key = serverKey(server);
+        const prev = serverResults[key];
+        serverResults[key] = result;
+
+        // Метрики
+        if (typeof result.confidence === 'number') {
+            scanMetrics.agreeSum += result.confidence;
+            scanMetrics.agreeCount++;
         }
-    }
-    return { online: false, error: errors.join('; ') };
+        if (result.probes) {
+            result.probes.forEach(p => {
+                if (typeof p.ms === 'number') {
+                    scanMetrics.latencySum += p.ms;
+                    scanMetrics.latencyCount++;
+                }
+            });
+        }
+        if (result.conflict) scanMetrics.conflicts++;
+        if (result.verified) scanMetrics.verified++;
+
+        // Уведомление о падении
+        if (prev && prev.online === true && result.online === false && isFavorite(key)) {
+            notify('⚠️ Сервер упал', key);
+        }
+
+        updateLastSeen(key, result.online);
+
+        // Bedrock проверка (асинхронно)
+        if (bedrockSupport[key] === undefined) {
+            const bedrockProbe = PROBES.find(p => p.role === 'bedrock');
+            scanner.queryProbe(bedrockProbe, server.address).then(bres => {
+                bedrockSupport[key] = bres.ok && bres.data?.online === true;
+                updateCard(key);
+            });
+        }
+
+        updateCard(key);
+        updateStats();
+        updateScannerPanel();
+    });
+
+    return s;
 }
 
-async function fetchBedrockStatus(address) {
-    try {
-        const url = BEDROCK_API.url(address, 19132);
-        const response = await fetch(url, {
-            headers: { 'Accept': 'application/json', ...BEDROCK_API.headers },
-            signal: AbortSignal.timeout(10000)
-        });
-        if (!response.ok) return false;
-        const data = await response.json();
-        return BEDROCK_API.parse(data).online === true;
-    } catch { return false; }
+function resetMetrics() {
+    scanMetrics = { agreeSum: 0, agreeCount: 0, latencySum: 0, latencyCount: 0, conflicts: 0, verified: 0 };
 }
 
 // ============================================================
-//  PROGRESS BAR
+//  PROGRESS / PANEL
 // ============================================================
 function updateProgress(cur, total, name) {
     const c = document.getElementById('progressContainer');
@@ -408,6 +651,26 @@ function updateProgress(cur, total, name) {
     if (n && name) n.textContent = `Сейчас: ${name}`;
 }
 
+function updateScannerPanel() {
+    const panel = document.getElementById('scannerPanel');
+    if (!panel) return;
+    if (!scanner?.running && scanMetrics.agreeCount === 0) {
+        panel.style.display = 'none';
+        return;
+    }
+    panel.style.display = 'grid';
+
+    const avgAgree = scanMetrics.agreeCount > 0
+        ? Math.round(scanMetrics.agreeSum / scanMetrics.agreeCount) : 0;
+    const avgLatency = scanMetrics.latencyCount > 0
+        ? Math.round(scanMetrics.latencySum / scanMetrics.latencyCount) : 0;
+
+    document.getElementById('spAgreement').textContent = avgAgree + '%';
+    document.getElementById('spLatency').textContent = avgLatency + ' мс';
+    document.getElementById('spVerified').textContent = scanMetrics.verified;
+    document.getElementById('spConflicts').textContent = scanMetrics.conflicts;
+}
+
 // ============================================================
 //  LOAD
 // ============================================================
@@ -419,129 +682,80 @@ async function loadServersFromJson() {
         if (!Array.isArray(data)) throw new Error('JSON должен быть массивом');
 
         allServers = data;
-        serverStatuses = {};
+        serverResults = {};
         allServers.forEach(srv => {
-            serverStatuses[serverKey(srv)] = { status: 'checking', data: null };
+            serverResults[serverKey(srv)] = { _scanning: true, online: null };
         });
 
         hideError();
         renderServers();
         updateStats();
-        checkAllServers();
+
+        scanner = createScanner();
+        startScan();
     } catch (err) {
         addLog('err', 'loadServers: ' + err.message);
         showError(`Ошибка загрузки servers.json: ${err.message}`);
         document.getElementById('serverGrid').innerHTML = `
             <div class="empty-state">
                 ❌ Не удалось загрузить список.<br><br>
-                Проверьте, что файл <code>servers.json</code> в одной папке с <code>index.html</code><br>
-                и сайт открыт через <code>http(s)://</code>, а не <code>file://</code>.<br><br>
+                Проверьте, что <code>servers.json</code> в одной папке с <code>index.html</code><br>
+                и сайт открыт через <code>http(s)://</code>.<br><br>
                 <small style="color:#555">${escapeHtml(err.message)}</small>
             </div>`;
     }
 }
 
-// ============================================================
-//  SCAN
-// ============================================================
-async function checkAllServers() {
-    if (isRefreshing) return;
-    isRefreshing = true;
+async function startScan() {
+    if (!scanner || scanner.running) return;
 
-    const total = allServers.length;
-    let current = 0;
+    const refreshBtn = document.getElementById('refreshBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '⏳ Сканирование...';
+    stopBtn.style.display = 'inline-block';
 
-    updateProgress(0, total);
+    document.getElementById('scannerPanel').style.display = 'grid';
 
-    for (let i = 0; i < allServers.length; i++) {
-        const srv = allServers[i];
-        const key = serverKey(srv);
-        const lastCheck = lastCheckTimes[key] || 0;
-        const cached = serverStatuses[key];
+    await scanner.scanAll(allServers);
 
-        if (cached?.status === 'offline' && (Date.now() - lastCheck) < OFFLINE_CACHE_MS) {
-            current++;
-            updateProgress(current, total, `${srv.address}:${srv.port} (кэш)`);
-            continue;
-        }
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = '🔄 Обновить всё';
+    stopBtn.style.display = 'none';
 
-        await checkSingleServer(srv);
-        current++;
-        saveProgress(i);
-        updateProgress(current, total, `${srv.address}:${srv.port}`);
-        await new Promise(r => setTimeout(r, API_DELAY_MS));
-    }
-
-    isRefreshing = false;
     markScanned();
-    clearProgress();
     updateLastUpdate();
-    updateProgress(0, total);
+    updateProgress(0, 0);
     renderServers();
     updateStats();
+    updateScannerPanel();
     saveHistory();
     playBeep();
-    showToast(`✅ Сканирование завершено: ${total} серверов`);
-    gtag('event', 'scan_complete', { total_servers: total });
-}
-
-async function checkSingleServer(srv) {
-    const key = serverKey(srv);
-    serverStatuses[key] = { status: 'checking', data: null };
-    updateCard(key);
-
-    const prevOnline = getKnownStatus()[key];
-    const result = await fetchServerStatus(srv.address, srv.port);
-
-    serverStatuses[key] = {
-        status: result.online ? 'online' : 'offline',
-        data: result
-    };
-    lastCheckTimes[key] = Date.now();
-    updateLastSeen(key, result.online);
-
-    // Уведомление о падении любимого сервера
-    if (prevOnline === true && result.online === false && isFavorite(key)) {
-        notify('⚠️ Сервер упал', `${srv.address}:${srv.port}`);
-    }
-    updateKnownStatus(key, result.online);
-
-    // Проверка Bedrock (асинхронно, не блокируем)
-    if (!bedrockMap[key]) {
-        fetchBedrockStatus(srv.address).then(has => {
-            bedrockMap[key] = has;
-            if (has) updateCard(key);
-        });
-    }
-
-    updateCard(key);
-    updateStats();
-}
-
-async function refreshAll() {
-    if (isRefreshing) return;
-    const btn = document.getElementById('refreshBtn');
-    btn.disabled = true;
-    btn.textContent = '⏳ Сканирование...';
-
-    allServers.forEach(srv => {
-        serverStatuses[serverKey(srv)] = { status: 'checking', data: null };
+    showToast(`✅ Сканирование завершено: ${allServers.length} серверов`);
+    gtag('event', 'scan_complete', {
+        total_servers: allServers.length,
+        avg_confidence: Math.round(scanMetrics.agreeSum / Math.max(1, scanMetrics.agreeCount)),
+        conflicts: scanMetrics.conflicts
     });
-    lastCheckTimes = {};
-    renderServers();
-    updateStats();
-    gtag('event', 'scan_start', { manual: true });
+}
 
-    await checkAllServers();
-
-    btn.disabled = false;
-    btn.textContent = '🔄 Обновить всё';
+// Обновить одну карточку
+function updateCard(key) {
+    const card = document.querySelector(`.server-card[data-key="${CSS.escape(key)}"]`);
+    if (!card) return;
+    const srv = allServers.find(s => serverKey(s) === key);
+    if (!srv) return;
+    const temp = document.createElement('div');
+    temp.innerHTML = cardHtml(srv);
+    const newCard = temp.firstElementChild;
+    card.replaceWith(newCard);
+    bindSingleCardEvents(newCard);
 }
 
 // ============================================================
-//  FILTER + SORT
+//  FILTER / SORT
 // ============================================================
-function getFilteredAndSortedServers() {
+function getFilteredAndSorted() {
     const q = document.getElementById('searchInput').value.toLowerCase().trim();
     const filter = document.getElementById('filterSelect').value;
     const tagFilter = document.getElementById('tagFilter').value;
@@ -550,89 +764,81 @@ function getFilteredAndSortedServers() {
 
     let result = allServers.filter(srv => {
         const key = serverKey(srv);
-        const st = serverStatuses[key] || {};
-        const data = st.data || {};
+        const r = serverResults[key] || {};
+        const online = r.online === true;
+        const scanning = r._scanning && r.online == null;
 
-        if (filter === 'online' && st.status !== 'online') return false;
-        if (filter === 'offline' && st.status !== 'offline') return false;
+        if (filter === 'online' && !online) return false;
+        if (filter === 'offline' && (online || scanning)) return false;
         if (filter === 'favorites' && !isFavorite(key)) return false;
-        if (filter === 'with-icon' && !data.icon) return false;
-        if (filter === 'has-players' && !(data.players > 0)) return false;
-        if (filter === 'discord' && !extractDiscord(data.motd || srv.motd)) return false;
-        if (filter === 'cracked' || filter === 'premium') {
-            // Точное определение невозможно, используем эвристику по MOTD
-            const motd = (data.motd || srv.motd || '').toLowerCase();
-            const looksCracked = /cracked|пират|no.?premium|offline.?mode|non.?premium/.test(motd);
-            if (filter === 'cracked' && !looksCracked) return false;
-            if (filter === 'premium' && looksCracked) return false;
-        }
+        if (filter === 'with-icon' && !r.icon) return false;
+        if (filter === 'has-players' && !(r.players > 0)) return false;
+        if (filter === 'discord' && !extractDiscord(r.motd || srv.motd)) return false;
+        if (filter === 'confident' && !(r.confidence >= 90 && r.verified)) return false;
+        if (filter === 'conflicts' && !r.conflict) return false;
+
         if (tagFilter) {
-            const tags = extractTags(data.motd || srv.motd, data.version || srv.version);
+            const tags = extractTags(r.motd || srv.motd, r.version || srv.version);
             if (!tags.includes(tagFilter)) return false;
         }
         if (verFilter) {
-            const v = String(data.version || srv.version || '');
+            const v = String(r.version || srv.version || '');
             if (!v.includes(verFilter)) return false;
         }
         if (q) {
             const hay = [srv.address, String(srv.port), srv.motd || '', srv.version || '',
-                        getCustomName(key) || '', data.motd || '', data.version || '']
+                        getCustomName(key) || '', r.motd || '', r.version || '']
                 .join(' ').toLowerCase();
             if (!hay.includes(q)) return false;
         }
         return true;
     });
 
-    const statusOrder = { online: 0, checking: 1, offline: 2 };
+    const statusOrder = { online: 0, scanning: 1, offline: 2 };
 
     result.sort((a, b) => {
-        const sa = serverStatuses[serverKey(a)] || {};
-        const sb = serverStatuses[serverKey(b)] || {};
+        const ra = serverResults[serverKey(a)] || {};
+        const rb = serverResults[serverKey(b)] || {};
 
         const favA = isFavorite(serverKey(a)) ? 0 : 1;
         const favB = isFavorite(serverKey(b)) ? 0 : 1;
         if (favA !== favB) return favA - favB;
 
-        const fill = (s) => {
-            if (s.data?.players == null || !s.data?.maxPlayers) return -1;
-            return s.data.players / s.data.maxPlayers;
+        const sa = ra.online == null ? 'scanning' : (ra.online ? 'online' : 'offline');
+        const sb = rb.online == null ? 'scanning' : (rb.online ? 'online' : 'offline');
+
+        const fill = (r) => {
+            if (r.players == null || !r.maxPlayers) return -1;
+            return r.players / r.maxPlayers;
         };
 
         switch (sort) {
-            case 'fill-desc': return fill(sb) - fill(sa);
-            case 'players-desc': return (sb.data?.players ?? -1) - (sa.data?.players ?? -1);
-            case 'players-asc': return (sa.data?.players ?? 999999) - (sb.data?.players ?? 999999);
-            case 'name-asc': {
-                const na = getServerTitle(a).toLowerCase();
-                const nb = getServerTitle(b).toLowerCase();
-                return na.localeCompare(nb);
-            }
-            case 'name-desc': {
-                const na = getServerTitle(a).toLowerCase();
-                const nb = getServerTitle(b).toLowerCase();
-                return nb.localeCompare(na);
-            }
+            case 'confidence-desc': return (rb.confidence ?? -1) - (ra.confidence ?? -1);
+            case 'fill-desc': return fill(rb) - fill(ra);
+            case 'players-desc': return (rb.players ?? -1) - (ra.players ?? -1);
+            case 'players-asc': return (ra.players ?? 999999) - (rb.players ?? 999999);
+            case 'name-asc': return getTitle(a).toLowerCase().localeCompare(getTitle(b).toLowerCase());
+            case 'name-desc': return getTitle(b).toLowerCase().localeCompare(getTitle(a).toLowerCase());
             case 'version': {
-                const va = (sa.data?.version || a.version || '').toLowerCase();
-                const vb = (sb.data?.version || b.version || '').toLowerCase();
+                const va = (ra.version || a.version || '').toLowerCase();
+                const vb = (rb.version || b.version || '').toLowerCase();
                 return va.localeCompare(vb);
             }
             default:
-                return (statusOrder[sa.status] ?? 3) - (statusOrder[sb.status] ?? 3);
+                return (statusOrder[sa] ?? 3) - (statusOrder[sb] ?? 3);
         }
     });
 
     return result;
 }
 
-function getServerTitle(srv) {
+function getTitle(srv) {
     const key = serverKey(srv);
     const custom = getCustomName(key);
     if (custom) return custom;
-    const st = serverStatuses[key] || {};
-    const data = st.data || {};
+    const r = serverResults[key] || {};
     let src = srv.motd || '';
-    if (data.motd) src = data.motd;
+    if (r.motd) src = r.motd;
     return stripMinecraftColors(src.split('\n')[0]) || 'Без названия';
 }
 
@@ -641,7 +847,7 @@ function getServerTitle(srv) {
 // ============================================================
 function renderServers(resetPagination = true) {
     const grid = document.getElementById('serverGrid');
-    currentFiltered = getFilteredAndSortedServers();
+    currentFiltered = getFilteredAndSorted();
     if (resetPagination) displayedCount = PAGE_SIZE;
 
     const visible = currentFiltered.slice(0, displayedCount);
@@ -658,8 +864,7 @@ function renderServers(resetPagination = true) {
     const wrap = document.getElementById('loadMoreWrap');
     if (currentFiltered.length > displayedCount) {
         wrap.style.display = 'block';
-        const remaining = currentFiltered.length - displayedCount;
-        document.getElementById('loadMoreCount').textContent = `(${remaining})`;
+        document.getElementById('loadMoreCount').textContent = `(${currentFiltered.length - displayedCount})`;
     } else {
         wrap.style.display = 'none';
     }
@@ -667,76 +872,104 @@ function renderServers(resetPagination = true) {
 
 function cardHtml(srv) {
     const key = serverKey(srv);
-    const st = serverStatuses[key] || { status: 'checking', data: null };
-    const status = st.status;
-    const data = st.data || {};
+    const r = serverResults[key] || {};
+    const scanning = r.online == null || r._scanning;
+    const online = r.online === true;
+    const offline = r.online === false;
+    const status = scanning ? 'checking' : (online ? 'online' : 'offline');
+    const conflictClass = r.conflict ? ' conflict' : '';
+
     const fav = isFavorite(key);
     const customName = getCustomName(key);
+    const title = getTitle(srv);
+    const isCustom = !!customName;
 
     const statusLabels = { online: 'Онлайн', offline: 'Офлайн', checking: 'Скан' };
 
-    const title = getServerTitle(srv);
-    const isCustom = !!customName;
-
-    let motdText = (status === 'online' && data.motd)
-        ? data.motd
-        : (stripMinecraftColors(srv.motd || '') || '—');
-
-    const players = (status === 'online' && data.players != null) ? data.players : (srv.players_online ?? '—');
-    const maxPlayers = (status === 'online' && data.maxPlayers != null) ? data.maxPlayers : (srv.players_max ?? '—');
-    const version = (status === 'online' && data.version) ? data.version : (srv.version || '—');
+    let motdText = r.motd || stripMinecraftColors(srv.motd || '') || '—';
+    const players = r.players ?? (online ? (srv.players_online ?? 0) : '—');
+    const maxPlayers = r.maxPlayers ?? (online ? (srv.players_max ?? 0) : '—');
+    const version = r.version || srv.version || '—';
 
     let playerBar = '';
-    if (status === 'online' && typeof players === 'number' && typeof maxPlayers === 'number' && maxPlayers > 0) {
+    if (online && typeof players === 'number' && typeof maxPlayers === 'number' && maxPlayers > 0) {
         const p = Math.min(100, Math.round((players / maxPlayers) * 100));
         playerBar = `<div class="player-bar"><div class="player-bar-fill" style="width:${p}%"></div></div>`;
     }
 
     let iconHtml = '<span class="icon-placeholder">⛏</span>';
-    if (status === 'online' && data.icon) {
-        iconHtml = `<img src="${escapeHtml(data.icon)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<span class=\\'icon-placeholder\\'>⛏</span>'">`;
+    if (online && r.icon) {
+        iconHtml = `<img src="${escapeHtml(r.icon)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<span class=\\'icon-placeholder\\'>⛏</span>'">`;
+    }
+
+    // Чипы проб (cross-verification)
+    let probesHtml = '';
+    if (Array.isArray(r.probes) && r.probes.length > 0) {
+        probesHtml = `<div class="probe-chips">${r.probes.map(p => {
+            const cls = p.status === 'agree' ? 'agree'
+                : p.status === 'disagree' ? 'disagree'
+                : p.status === 'failed' ? 'failed' : '';
+            const tip = `${p.name}: ${p.status === 'failed' ? 'ошибка ' + (p.error || '') : (p.online ? 'онлайн' : 'офлайн')} (${p.ms} мс)`;
+            return `<div class="probe-chip ${cls}" title="${escapeHtml(tip)}"></div>`;
+        }).join('')}</div>`;
+    } else if (scanning) {
+        probesHtml = `<div class="probe-chips">
+            <div class="probe-chip checking"></div>
+            <div class="probe-chip checking"></div>
+        </div>`;
+    }
+
+    // Confidence bar
+    let confHtml = '';
+    if (typeof r.confidence === 'number' && !scanning) {
+        const cls = r.confidence >= 90 ? 'high' : r.confidence >= 60 ? 'medium' : 'low';
+        confHtml = `
+            <div class="confidence-bar" title="Согласие проб: ${r.confidence}%">
+                <div class="bar"><div class="fill ${cls}" style="width:${r.confidence}%"></div></div>
+                <span>${r.confidence}%</span>
+            </div>`;
     }
 
     // Теги
-    const tags = extractTags(data.motd || srv.motd, data.version || srv.version);
-    const discord = extractDiscord(data.motd || srv.motd);
-    const hasBedrock = bedrockMap[key] === true;
+    const tags = extractTags(r.motd || srv.motd, r.version || srv.version);
+    const discord = extractDiscord(r.motd || srv.motd);
+    const hasBedrock = bedrockSupport[key] === true;
 
     let tagsHtml = '';
     if (tags.length > 0 || discord || hasBedrock) {
-        const tagEls = tags.map(t => `<span class="tag">${t}</span>`);
-        if (discord) tagEls.push(`<span class="tag discord">💬 Discord</span>`);
-        if (hasBedrock) tagEls.push(`<span class="tag bedrock">Bedrock</span>`);
-        tagsHtml = `<div class="tags">${tagEls.join('')}</div>`;
+        const els = tags.map(t => `<span class="tag">${t}</span>`);
+        if (discord) els.push(`<span class="tag discord">💬 Discord</span>`);
+        if (hasBedrock) els.push(`<span class="tag bedrock">Bedrock</span>`);
+        tagsHtml = `<div class="tags">${els.join('')}</div>`;
     }
 
-    const sourceTag = (status !== 'checking' && data.source)
-        ? `<span class="source-tag">${escapeHtml(data.source)}</span>` : '';
-
     let lastSeenHtml = '';
-    if (status === 'offline') {
+    if (offline && !scanning) {
         const ts = getLastSeen(key);
         if (ts) lastSeenHtml = `<div class="last-seen">📅 Был онлайн: ${formatLastSeen(ts)}</div>`;
     }
 
-    const hasPlayerList = status === 'online' && Array.isArray(data.playerList) && data.playerList.length > 0;
+    const hasPlayerList = online && Array.isArray(r.playerList) && r.playerList.length > 0;
     const pcClass = hasPlayerList ? 'player-count clickable' : 'player-count';
     const pcTitle = hasPlayerList ? 'Нажмите, чтобы увидеть список' : '';
 
     return `
-        <div class="server-card ${status} ${fav ? 'is-favorite' : ''}" data-key="${escapeHtml(key)}">
+        <div class="server-card ${status}${conflictClass} ${fav ? 'is-favorite' : ''}" data-key="${escapeHtml(key)}">
             <button class="fav-btn ${fav ? 'active' : ''}" data-fav="${escapeHtml(key)}" title="Избранное">${fav ? '★' : '☆'}</button>
             <div class="card-main">
                 <div class="server-icon">${iconHtml}</div>
                 <div class="card-content">
                     <div class="card-header">
-                        <div class="server-name ${isCustom ? 'custom' : ''}" data-name="${escapeHtml(key)}" title="${renameMode ? 'Кликните, чтобы переименовать' : ''}">${escapeHtml(title)}</div>
-                        <div class="status-badge ${status}">
-                            ${status === 'checking' ? '<span class="loading-spinner"></span>' : ''}
-                            ${statusLabels[status] || status}
+                        <div class="server-name ${isCustom ? 'custom' : ''}" data-name="${escapeHtml(key)}">${escapeHtml(title)}</div>
+                        <div>
+                            <div class="status-badge ${status}">
+                                ${scanning ? '<span class="loading-spinner"></span>' : ''}
+                                ${statusLabels[status] || status}
+                            </div>
+                            ${probesHtml}
                         </div>
                     </div>
-                    <div class="server-address" data-address="${escapeHtml(key)}" data-qr="${escapeHtml(key)}" title="Клик — копировать, Shift+клик — QR">
+                    <div class="server-address" data-address="${escapeHtml(key)}" title="Клик — копировать, Shift+клик — QR">
                         ${escapeHtml(srv.address)}:${srv.port}
                         <span class="copy-hint">📋</span>
                     </div>
@@ -750,23 +983,11 @@ function cardHtml(srv) {
                         </div>
                         <div class="version-tag" title="${escapeHtml(String(version))}">${escapeHtml(String(version))}</div>
                     </div>
-                    ${sourceTag ? `<div style="margin-top:6px;text-align:right;">${sourceTag}</div>` : ''}
+                    ${confHtml}
                 </div>
             </div>
         </div>
     `;
-}
-
-function updateCard(key) {
-    const card = document.querySelector(`.server-card[data-key="${CSS.escape(key)}"]`);
-    if (!card) return;
-    const srv = allServers.find(s => serverKey(s) === key);
-    if (!srv) return;
-    const temp = document.createElement('div');
-    temp.innerHTML = cardHtml(srv);
-    const newCard = temp.firstElementChild;
-    card.replaceWith(newCard);
-    bindSingleCardEvents(newCard);
 }
 
 function bindSingleCardEvents(card) {
@@ -785,16 +1006,13 @@ function bindSingleCardEvents(card) {
     if (addr) addr.addEventListener('click', async (e) => {
         e.stopPropagation();
         const key = addr.getAttribute('data-address');
-        if (e.shiftKey) {
-            openQrModal(key);
-            return;
-        }
+        if (e.shiftKey) { openQrModal(key); return; }
         try {
             await navigator.clipboard.writeText(key);
             addr.classList.add('copied');
             showToast('📋 Скопировано: ' + key);
             setTimeout(() => addr.classList.remove('copied'), 1200);
-        } catch { showToast('❌ Не удалось скопировать'); }
+        } catch { showToast('❌ Не удалось'); }
     });
 
     const pc = card.querySelector('.player-count.clickable');
@@ -808,8 +1026,8 @@ function bindSingleCardEvents(card) {
         e.stopPropagation();
         const key = nameEl.getAttribute('data-name');
         if (renameMode) {
-            const current = getCustomName(key) || '';
-            const newName = prompt(`Новое имя для ${key}:`, current);
+            const cur = getCustomName(key) || '';
+            const newName = prompt(`Новое имя для ${key}:`, cur);
             if (newName !== null) {
                 setCustomName(key, newName.trim() || null);
                 renderServers(false);
@@ -838,8 +1056,8 @@ function closeModal() {
 function openPlayerModal(key) {
     const srv = allServers.find(s => serverKey(s) === key);
     if (!srv) return;
-    const data = serverStatuses[key]?.data || {};
-    const list = data.playerList || [];
+    const r = serverResults[key] || {};
+    const list = r.playerList || [];
 
     let html;
     if (list.length === 0) {
@@ -869,8 +1087,8 @@ function openLogModal() {
         html = '<div class="modal-empty">Лог пуст</div>';
     } else {
         html = logs.slice(0, 100).map(l => {
-            const time = new Date(l.t).toLocaleTimeString('ru-RU');
-            return `<div class="log-item ${l.level}"><span class="time">${time}</span><span>${escapeHtml(l.msg)}</span></div>`;
+            const t = new Date(l.t).toLocaleTimeString('ru-RU');
+            return `<div class="log-item ${l.level}"><span class="time">${t}</span><span>${escapeHtml(l.msg)}</span></div>`;
         }).join('');
     }
     openModal('📋 Лог сканирования', html);
@@ -879,14 +1097,11 @@ function openLogModal() {
 function openHistoryModal() {
     const h = getHistory();
     let html;
-    if (h.length === 0) {
-        html = '<div class="modal-empty">История пуста</div>';
-    } else {
-        html = h.map(snap => {
-            const date = new Date(snap.t).toLocaleString('ru-RU');
-            return `<div class="history-item"><span>${date}</span><span style="margin-left:auto;color:var(--accent);">${snap.online} / ${snap.total}</span></div>`;
-        }).join('');
-    }
+    if (h.length === 0) html = '<div class="modal-empty">История пуста</div>';
+    else html = h.map(snap => {
+        const date = new Date(snap.t).toLocaleString('ru-RU');
+        return `<div class="history-item"><span>${date}</span><span style="margin-left:auto;color:var(--accent);">${snap.online} / ${snap.total}</span></div>`;
+    }).join('');
     openModal('📜 История сканирований', html);
 }
 
@@ -905,20 +1120,10 @@ function openCompareModal() {
         const p = prevMap[s.k];
         if (!p) return;
         if (p.online !== s.online) {
-            changes.push({
-                k: s.k,
-                text: s.online ? '⬆️ Стал онлайн' : '⬇️ Упал',
-                level: s.online ? 'ok' : 'err'
-            });
-        } else if (s.online && p.players !== s.players) {
+            changes.push({ k: s.k, text: s.online ? '⬆️ Стал онлайн' : '⬇️ Упал', level: s.online ? 'ok' : 'err' });
+        } else if (s.online && Math.abs(s.players - p.players) >= 3) {
             const diff = s.players - p.players;
-            if (Math.abs(diff) >= 3) {
-                changes.push({
-                    k: s.k,
-                    text: `${diff > 0 ? '📈' : '📉'} ${p.players} → ${s.players} (${diff > 0 ? '+' : ''}${diff})`,
-                    level: 'warn'
-                });
-            }
+            changes.push({ k: s.k, text: `${diff > 0 ? '📈' : '📉'} ${p.players} → ${s.players}`, level: 'warn' });
         }
     });
 
@@ -926,31 +1131,57 @@ function openCompareModal() {
     const to = new Date(cur.t).toLocaleString('ru-RU');
 
     let html = `<div style="margin-bottom:12px;color:var(--text-dim);font-size:0.85rem;">Сравнение: <b>${from}</b> → <b>${to}</b></div>`;
-    if (changes.length === 0) {
-        html += '<div class="modal-empty">Ничего значимого не изменилось</div>';
-    } else {
-        html += changes.map(c =>
-            `<div class="log-item ${c.level}"><span style="flex:1;font-family:monospace;font-size:0.78rem;">${escapeHtml(c.k)}</span><span>${escapeHtml(c.text)}</span></div>`
-        ).join('');
-    }
+    if (changes.length === 0) html += '<div class="modal-empty">Ничего значимого не изменилось</div>';
+    else html += changes.map(c =>
+        `<div class="log-item ${c.level}"><span style="flex:1;font-family:monospace;font-size:0.78rem;">${escapeHtml(c.k)}</span><span>${escapeHtml(c.text)}</span></div>`
+    ).join('');
     openModal('🔀 Сравнение сканирований', html);
+}
+
+function openProbeStatsModal() {
+    const stats = scanner?.getProbeStats() || {};
+    const probeList = PROBES.filter(p => p.role !== 'bedrock');
+    let html = '<div style="margin-bottom:12px;color:var(--text-dim);font-size:0.85rem;">Статистика проб (API, используемых для проверки работы серверов):</div>';
+
+    html += probeList.map(p => {
+        const s = stats[p.id] || { ok: 0, fail: 0, totalMs: 0 };
+        const total = s.ok + s.fail;
+        const avgMs = total > 0 ? Math.round(s.totalMs / total) : 0;
+        const successRate = total > 0 ? Math.round((s.ok / total) * 100) : 0;
+        return `<div class="probe-row">
+            <span class="probe-name">${escapeHtml(p.name)}</span>
+            <span class="probe-stat">✅ <b>${s.ok}</b></span>
+            <span class="probe-stat">❌ <b>${s.fail}</b></span>
+            <span class="probe-stat">⚡ <b>${avgMs} мс</b></span>
+            <span class="probe-stat" style="margin-left:auto;color:var(--accent);"><b>${successRate}%</b></span>
+        </div>`;
+    }).join('');
+
+    html += `<div style="margin-top:14px;padding:10px 12px;background:var(--tag-bg);border-radius:8px;font-size:0.82rem;color:var(--text-dim);">
+        🧠 <b>Свой движок сканирования:</b> каждая проба запускается отдельно с таймаутом ${SCANNER_CONFIG.probeTimeoutMs / 1000} сек
+        и ${SCANNER_CONFIG.retryMax} retry при ошибке. Cross-verification сравнивает ответы
+        primary + secondary; при расхождении подключается tiebreaker.
+    </div>`;
+
+    openModal('📡 Статистика проб', html);
 }
 
 function openHelpModal() {
     const shortcuts = [
         ['/', 'Фокус на поиск'],
-        ['Esc', 'Закрыть модальное окно / очистить поиск'],
+        ['Esc', 'Закрыть модалку / снять фокус'],
         ['R', 'Перезапустить сканирование'],
         ['T', 'Переключить тему'],
         ['E', 'Экспорт JSON'],
         ['C', 'Экспорт CSV'],
         ['H', 'История'],
-        ['L', 'Лог сканирования'],
+        ['L', 'Лог'],
+        ['P', 'Статистика проб'],
         ['?', 'Эта справка'],
-        ['Shift+клик по адресу', 'Показать QR-код'],
-        ['Клик по адресу', 'Скопировать адрес'],
+        ['Shift+клик по адресу', 'QR-код'],
+        ['Клик по адресу', 'Копировать'],
         ['Клик по числу игроков', 'Список игроков'],
-        ['Клик по имени (в режиме ✏️)', 'Переименовать']
+        ['Клик по имени (режим ✏️)', 'Переименовать']
     ];
     const html = shortcuts.map(([k, d]) =>
         `<div class="shortcut-row"><span>${escapeHtml(d)}</span><span class="kbd">${escapeHtml(k)}</span></div>`
@@ -962,22 +1193,28 @@ function openHelpModal() {
 //  STATS
 // ============================================================
 function updateStats() {
-    let online = 0, offline = 0, players = 0;
+    let online = 0, offline = 0, players = 0, confSum = 0, confCount = 0;
     allServers.forEach(srv => {
-        const st = serverStatuses[serverKey(srv)];
-        if (!st) return;
-        if (st.status === 'online') { online++; players += (st.data?.players ?? 0); }
-        else if (st.status === 'offline') offline++;
+        const r = serverResults[serverKey(srv)];
+        if (!r) return;
+        if (r.online === true) {
+            online++;
+            players += (r.players ?? 0);
+            if (typeof r.confidence === 'number') { confSum += r.confidence; confCount++; }
+        } else if (r.online === false) {
+            offline++;
+            if (typeof r.confidence === 'number') { confSum += r.confidence; confCount++; }
+        }
     });
     const total = allServers.length;
-    const pct = total > 0 ? Math.round((online / total) * 100) : 0;
-
     document.getElementById('totalCount').textContent = total;
     document.getElementById('onlineCount').textContent = online;
     document.getElementById('offlineCount').textContent = offline;
     document.getElementById('playersTotal').textContent = players;
-    document.getElementById('onlinePercent').textContent = pct + '%';
+    document.getElementById('avgConfidence').textContent =
+        confCount > 0 ? Math.round(confSum / confCount) + '%' : '—';
 }
+
 function updateLastUpdate() {
     const el = document.getElementById('lastUpdate');
     if (!el) return;
@@ -992,25 +1229,25 @@ function updateLastUpdate() {
 function buildExportData() {
     return allServers.map(srv => {
         const key = serverKey(srv);
-        const st = serverStatuses[key] || {};
-        const d = st.data || {};
-        const tags = extractTags(d.motd || srv.motd, d.version || srv.version);
+        const r = serverResults[key] || {};
+        const tags = extractTags(r.motd || srv.motd, r.version || srv.version);
         return {
-            address: srv.address,
-            port: srv.port,
-            status: st.status || 'unknown',
-            online: st.status === 'online',
+            address: srv.address, port: srv.port,
+            online: r.online === true,
+            confidence: r.confidence ?? null,
+            verified: r.verified ?? false,
+            conflict: r.conflict ?? false,
             favorite: isFavorite(key),
             customName: getCustomName(key),
-            players: d.players ?? null,
-            maxPlayers: d.maxPlayers ?? null,
-            version: d.version || srv.version || null,
-            motd: d.motd || srv.motd || null,
+            players: r.players ?? null,
+            maxPlayers: r.maxPlayers ?? null,
+            version: r.version || srv.version || null,
+            motd: r.motd || srv.motd || null,
             tags,
-            discord: extractDiscord(d.motd || srv.motd),
-            bedrock: bedrockMap[key] === true,
-            hasIcon: !!d.icon,
-            source: d.source || null,
+            discord: extractDiscord(r.motd || srv.motd),
+            bedrock: bedrockSupport[key] === true,
+            hasIcon: !!r.icon,
+            probes: r.probes || [],
             lastSeen: getLastSeen(key),
             scannedAt: new Date().toISOString()
         };
@@ -1018,15 +1255,14 @@ function buildExportData() {
 }
 
 function exportJson() {
-    const data = buildExportData();
-    downloadFile(JSON.stringify(data, null, 2), `mcscanner-${dateStr()}.json`, 'application/json');
+    downloadFile(JSON.stringify(buildExportData(), null, 2), `mcscanner-${dateStr()}.json`, 'application/json');
     showToast('💾 JSON сохранён');
     gtag('event', 'export', { format: 'json' });
 }
 
 function exportCsv() {
     const data = buildExportData();
-    const cols = ['address','port','status','online','favorite','customName','players','maxPlayers','version','motd','tags','discord','bedrock','source'];
+    const cols = ['address','port','online','confidence','verified','conflict','favorite','customName','players','maxPlayers','version','motd','tags','discord','bedrock','lastSeen'];
     const header = cols.join(',');
     const rows = data.map(row => cols.map(c => {
         let v = row[c];
@@ -1035,7 +1271,7 @@ function exportCsv() {
         v = String(v).replace(/"/g, '""').replace(/\n/g, ' ');
         return `"${v}"`;
     }).join(','));
-    const csv = '\uFEFF' + [header, ...rows].join('\n'); // BOM для Excel
+    const csv = '\uFEFF' + [header, ...rows].join('\n');
     downloadFile(csv, `mcscanner-${dateStr()}.csv`, 'text/csv');
     showToast('📊 CSV сохранён');
     gtag('event', 'export', { format: 'csv' });
@@ -1058,9 +1294,7 @@ function showError(msg) {
     b.textContent = '⚠ ' + msg;
     b.classList.add('show');
 }
-function hideError() {
-    document.getElementById('errorBanner').classList.remove('show');
-}
+function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
 let toastTimer = null;
 function showToast(msg) {
     let t = document.getElementById('mcscanner-toast');
@@ -1077,31 +1311,22 @@ function showToast(msg) {
 }
 
 // ============================================================
-//  SERVICE WORKER
+//  SW / PWA
 // ============================================================
 async function registerSW() {
     if (!('serviceWorker' in navigator)) return;
-    try {
-        await navigator.serviceWorker.register('./sw.js');
-        addLog('ok', 'Service Worker зарегистрирован');
-    } catch (err) {
-        addLog('warn', 'SW: ' + err.message);
+    try { await navigator.serviceWorker.register('./sw.js'); addLog('ok', 'SW зарегистрирован'); }
+    catch (err) { addLog('warn', 'SW: ' + err.message); }
+}
+async function clearAllCaches() {
+    if (scanner) scanner.clearCache();
+    if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
     }
+    showToast('🗑️ Кэш сканера очищен');
 }
 
-async function clearApiCache() {
-    if (!('caches' in window)) { showToast('Кэш недоступен'); return; }
-    const keys = await caches.keys();
-    for (const k of keys) {
-        if (k.includes('api')) await caches.delete(k);
-    }
-    showToast('🗑️ Кэш API очищен');
-    gtag('event', 'cache_clear');
-}
-
-// ============================================================
-//  PWA INSTALL
-// ============================================================
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -1111,8 +1336,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
 document.getElementById('installBtn').addEventListener('click', async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    addLog('ok', 'PWA install: ' + outcome);
+    await deferredPrompt.userChoice;
     deferredPrompt = null;
     document.getElementById('installBtn').style.display = 'none';
 });
@@ -1125,13 +1349,17 @@ document.getElementById('filterSelect').addEventListener('change', () => renderS
 document.getElementById('tagFilter').addEventListener('change', () => renderServers(true));
 document.getElementById('versionFilter').addEventListener('change', () => renderServers(true));
 document.getElementById('sortSelect').addEventListener('change', () => renderServers(true));
-document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+document.getElementById('refreshBtn').addEventListener('click', () => { scanner?.clearCache(); startScan(); });
+document.getElementById('stopBtn').addEventListener('click', () => {
+    if (scanner) { scanner.abort(); showToast('⏹ Сканирование остановлено'); }
+});
 document.getElementById('exportBtn').addEventListener('click', exportJson);
 document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
 document.getElementById('compareBtn').addEventListener('click', openCompareModal);
 document.getElementById('logBtn').addEventListener('click', openLogModal);
-document.getElementById('clearCacheBtn').addEventListener('click', clearApiCache);
+document.getElementById('probeStatsBtn').addEventListener('click', openProbeStatsModal);
+document.getElementById('clearCacheBtn').addEventListener('click', clearAllCaches);
 document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 document.getElementById('notifToggle').addEventListener('click', toggleNotifications);
 document.getElementById('helpBtn').addEventListener('click', openHelpModal);
@@ -1143,7 +1371,6 @@ document.getElementById('loadMoreBtn').addEventListener('click', () => {
     displayedCount += PAGE_SIZE;
     renderServers(false);
 });
-
 document.getElementById('renameModeBtn').addEventListener('click', (e) => {
     renameMode = !renameMode;
     e.currentTarget.classList.toggle('active', renameMode);
@@ -1151,27 +1378,23 @@ document.getElementById('renameModeBtn').addEventListener('click', (e) => {
     showToast(renameMode ? '✏️ Клик по имени — переименовать' : 'Режим имён выключен');
 });
 
-// Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
     const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
     if (e.key === 'Escape') {
-        if (document.getElementById('modalBackdrop').classList.contains('show')) {
-            closeModal();
-        } else if (inInput) {
-            document.activeElement.blur();
-        }
+        if (document.getElementById('modalBackdrop').classList.contains('show')) closeModal();
+        else if (inInput) document.activeElement.blur();
         return;
     }
     if (inInput) return;
-
     switch (e.key.toLowerCase()) {
         case '/': e.preventDefault(); document.getElementById('searchInput').focus(); break;
-        case 'r': refreshAll(); break;
+        case 'r': scanner?.clearCache(); startScan(); break;
         case 't': toggleTheme(); break;
         case 'e': exportJson(); break;
         case 'c': exportCsv(); break;
         case 'h': openHistoryModal(); break;
         case 'l': openLogModal(); break;
+        case 'p': openProbeStatsModal(); break;
         case '?': openHelpModal(); break;
     }
 });
@@ -1184,16 +1407,10 @@ applyTheme();
 updateNotifBtn();
 registerSW();
 
-addLog('ok', `${APP_NAME} v2.0 запущен`);
-console.log(`[${APP_NAME}] Запущено. Автор: ${APP_AUTHOR}.`);
-console.log(`[${APP_NAME}] Сегодня ${isWeekend() ? 'выходной' : 'будний день'}.`);
+addLog('ok', `${APP_NAME} v3.0 — собственный движок сканирования`);
+console.log(`[${APP_NAME}] Сканер запущен. Автор: ${APP_AUTHOR}.`);
+console.log(`[${APP_NAME}] Конфиг: ${JSON.stringify(SCANNER_CONFIG)}`);
 
-const resume = loadProgress();
-if (resume) {
-    console.log(`[${APP_NAME}] Найдено прерванное сканирование (${resume.idx} серверов).`);
-    showToast('▶️ Продолжаем прерванное сканирование');
-}
-
-if (shouldAutoScan()) console.log(`[${APP_NAME}] Запуск еженедельного сканирования...`);
+if (shouldAutoScan()) console.log(`[${APP_NAME}] Еженедельное сканирование`);
 
 loadServersFromJson();
