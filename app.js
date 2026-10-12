@@ -10,21 +10,21 @@ const SERVERS_JSON_PATH = './servers.json';
 
 // Ключ в localStorage для отслеживания последнего сканирования
 const LAST_SCAN_KEY = 'mcscanner_last_scan';
-// Раз в 7 дней — пересканируем автоматически
 const RESCAN_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Задержка между запросами к API (в миллисекундах)
-// Увеличена до 2000 мс, чтобы избежать ошибки 429
-const API_DELAY_MS = 2000;
+// ⏱ ЗАДЕРЖКА между запросами (в миллисекундах).
+// 3000 мс = 3 секунды. Если ловите 429 — увеличьте до 5000.
+const API_DELAY_MS = 3000;
 
-// Бесплатные API без ключей
+// ============================================================
+//  БЕСПЛАТНЫЕ API БЕЗ КЛЮЧЕЙ
+// ============================================================
 const API_ENDPOINTS = [
     {
         name: 'mcsrvstat.us',
         url: (host, port) =>
             `https://api.mcsrvstat.us/3/${host}${port && port !== 25565 ? ':' + port : ''}`,
         headers: {
-            // mcsrvstat.us требует непустой User-Agent, иначе 403
             'User-Agent': `${APP_NAME}/1.0 (by ${APP_AUTHOR})`
         },
         parse: (data) => {
@@ -36,7 +36,10 @@ const API_ENDPOINTS = [
                 players: data.players ? (data.players.online ?? 0) : 0,
                 maxPlayers: data.players ? (data.players.max ?? 0) : 0,
                 version: data.version || '—',
-                motd: data.motd && data.motd.clean ? data.motd.clean.join(' ') : ''
+                motd: data.motd && data.motd.clean ? data.motd.clean.join(' ') : '',
+                icon: data.icon || null,
+                software: data.software || null,
+                eulaBlocked: data.eula_blocked === true
             };
         }
     },
@@ -52,21 +55,19 @@ const API_ENDPOINTS = [
                 players: data.players ? (data.players.online ?? 0) : 0,
                 maxPlayers: data.players ? (data.players.max ?? 0) : 0,
                 version: data.version ? (data.version.name_raw || data.version.name_clean || '—') : '—',
-                motd: data.motd ? (data.motd.clean || '') : ''
+                motd: data.motd ? (data.motd.clean || '') : '',
+                icon: data.icon || null,
+                software: data.software || null,
+                eulaBlocked: data.eula_blocked === true
             };
         }
     },
     {
         name: 'mcapi.us',
-        // Документация: https://mcapi.us/server/status?ip=...&port=...
-        // CORS включён, JSONP не поддерживается
         url: (host, port) =>
             `https://mcapi.us/server/status?ip=${encodeURIComponent(host)}${port && port !== 25565 ? '&port=' + port : ''}`,
-        headers: {
-            'Accept': 'application/json'
-        },
+        headers: { 'Accept': 'application/json' },
         parse: (data) => {
-            // mcapi.us возвращает status: "success" при успехе
             if (!data || data.status !== 'success' || data.online === false) {
                 return { online: false };
             }
@@ -75,7 +76,10 @@ const API_ENDPOINTS = [
                 players: data.players ? (data.players.now ?? 0) : 0,
                 maxPlayers: data.players ? (data.players.max ?? 0) : 0,
                 version: data.server ? (data.server.name || '—') : '—',
-                motd: data.motd || ''
+                motd: data.motd || '',
+                icon: data.favicon || null,
+                software: null,
+                eulaBlocked: false
             };
         }
     }
@@ -112,9 +116,7 @@ function isWeekend() {
 function shouldAutoScan() {
     const last = Number(localStorage.getItem(LAST_SCAN_KEY) || 0);
     const now = Date.now();
-    const weekPassed = (now - last) >= RESCAN_INTERVAL_MS;
-
-    if (weekPassed) return true;
+    if ((now - last) >= RESCAN_INTERVAL_MS) return true;
 
     if (isWeekend()) {
         const lastDate = new Date(last).toDateString();
@@ -130,7 +132,6 @@ function markScanned() {
 
 /**
  * Запрашивает статус сервера последовательно через несколько API.
- * Возвращает объект { online, players, maxPlayers, version, motd, source }
  */
 async function fetchServerStatus(address, port) {
     const errors = [];
@@ -141,14 +142,13 @@ async function fetchServerStatus(address, port) {
             const response = await fetch(url, {
                 method: 'GET',
                 headers: { 'Accept': 'application/json', ...api.headers },
-                signal: AbortSignal.timeout(10000)
+                signal: AbortSignal.timeout(12000)
             });
 
             if (!response.ok) {
-                // Если получили 429, ждём и пробуем следующий API
                 if (response.status === 429) {
-                    console.warn(`[${APP_NAME}] ${api.name} вернул 429. Ждём 3 секунды...`);
-                    await new Promise(r => setTimeout(r, 3000));
+                    console.warn(`[${APP_NAME}] ${api.name} вернул 429. Ждём 5 секунд...`);
+                    await new Promise(r => setTimeout(r, 5000));
                 }
                 errors.push(`${api.name}: HTTP ${response.status}`);
                 continue;
@@ -172,12 +172,31 @@ async function fetchServerStatus(address, port) {
 }
 
 // ============================================================
+//  TOAST-УВЕДОМЛЕНИЯ
+// ============================================================
+let toastTimer = null;
+function showToast(msg) {
+    let toast = document.getElementById('mcscanner-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'mcscanner-toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ============================================================
 //  ПРОГРЕСС
 // ============================================================
-function updateProgress(current, total) {
+function updateProgress(current, total, currentName) {
     const container = document.getElementById('progressContainer');
     const fill = document.getElementById('progressBarFill');
     const text = document.getElementById('progressText');
+    const currentEl = document.getElementById('progressCurrent');
 
     if (!container || !fill || !text) return;
 
@@ -190,6 +209,9 @@ function updateProgress(current, total) {
     const percent = Math.round((current / total) * 100);
     fill.style.width = percent + '%';
     text.textContent = `${current} / ${total}`;
+    if (currentEl && currentName) {
+        currentEl.textContent = `Сейчас: ${currentName}`;
+    }
 }
 
 // ============================================================
@@ -204,41 +226,31 @@ async function loadServersFromJson() {
         }
 
         const data = await response.json();
-
-        if (!Array.isArray(data)) {
-            throw new Error('JSON должен содержать массив серверов');
-        }
+        if (!Array.isArray(data)) throw new Error('JSON должен содержать массив серверов');
 
         allServers = data;
         serverStatuses = {};
 
         allServers.forEach(srv => {
-            serverStatuses[serverKey(srv)] = {
-                status: 'checking',
-                data: null
-            };
+            serverStatuses[serverKey(srv)] = { status: 'checking', data: null };
         });
 
         hideError();
         renderServers();
         updateStats();
-
-        // Запускаем сканирование
         checkAllServers();
 
     } catch (err) {
         console.error(`[${APP_NAME}]`, err);
         showError(
             `Ошибка загрузки servers.json: ${err.message}. ` +
-            `Убедитесь, что файл лежит рядом с index.html и сайт открыт через http(s), ` +
-            `а не через file://.`
+            `Убедитесь, что файл лежит рядом с index.html и сайт открыт через http(s).`
         );
-
         document.getElementById('serverGrid').innerHTML = `
             <div class="empty-state">
                 ❌ Не удалось загрузить список серверов.<br><br>
-                Проверьте, что файл <code>servers.json</code> находится в той же папке, что и <code>index.html</code>.<br>
-                И что страница открыта по адресу <code>http://</code> или <code>https://</code>, а не <code>file://</code>.<br><br>
+                Проверьте, что файл <code>servers.json</code> в одной папке с <code>index.html</code>.<br>
+                И что страница открыта по <code>http://</code> или <code>https://</code>, а не <code>file://</code>.<br><br>
                 <small style="color:#555">${escapeHtml(err.message)}</small>
             </div>`;
     }
@@ -259,15 +271,15 @@ async function checkAllServers() {
     for (const srv of allServers) {
         await checkSingleServer(srv);
         current++;
-        updateProgress(current, total);
-        // Задержка между запросами, чтобы не получить 429
+        updateProgress(current, total, `${srv.address}:${srv.port}`);
         await new Promise(resolve => setTimeout(resolve, API_DELAY_MS));
     }
 
     isRefreshing = false;
     markScanned();
     updateLastUpdate();
-    updateProgress(0, total); // Скрываем прогресс
+    updateProgress(0, total);
+    showToast(`✅ Сканирование завершено: ${total} серверов`);
 }
 
 async function checkSingleServer(srv) {
@@ -306,17 +318,19 @@ async function refreshAll() {
 }
 
 // ============================================================
-//  ФИЛЬТРАЦИЯ
+//  ФИЛЬТРАЦИЯ И СОРТИРОВКА
 // ============================================================
-function getFilteredServers() {
+function getFilteredAndSortedServers() {
     const query = document.getElementById('searchInput').value.toLowerCase().trim();
     const filter = document.getElementById('filterSelect').value;
+    const sort = document.getElementById('sortSelect').value;
 
-    return allServers.filter(srv => {
+    let result = allServers.filter(srv => {
         const st = serverStatuses[serverKey(srv)] || {};
 
         if (filter === 'online' && st.status !== 'online') return false;
         if (filter === 'offline' && st.status !== 'offline') return false;
+        if (filter === 'with-icon' && !(st.data && st.data.icon)) return false;
 
         if (query) {
             const haystack = [
@@ -327,9 +341,42 @@ function getFilteredServers() {
             ].join(' ').toLowerCase();
             if (!haystack.includes(query)) return false;
         }
-
         return true;
     });
+
+    const statusOrder = { online: 0, checking: 1, offline: 2 };
+
+    result.sort((a, b) => {
+        const sa = serverStatuses[serverKey(a)] || {};
+        const sb = serverStatuses[serverKey(b)] || {};
+
+        switch (sort) {
+            case 'players-desc':
+                return (sb.data?.players ?? -1) - (sa.data?.players ?? -1);
+            case 'players-asc':
+                return (sa.data?.players ?? 999999) - (sb.data?.players ?? 999999);
+            case 'name-asc': {
+                const na = stripMinecraftColors((sa.data?.motd || a.motd || '')).toLowerCase();
+                const nb = stripMinecraftColors((sb.data?.motd || b.motd || '')).toLowerCase();
+                return na.localeCompare(nb);
+            }
+            case 'name-desc': {
+                const na = stripMinecraftColors((sa.data?.motd || a.motd || '')).toLowerCase();
+                const nb = stripMinecraftColors((sb.data?.motd || b.motd || '')).toLowerCase();
+                return nb.localeCompare(na);
+            }
+            case 'version': {
+                const va = (sa.data?.version || a.version || '').toLowerCase();
+                const vb = (sb.data?.version || b.version || '').toLowerCase();
+                return va.localeCompare(vb);
+            }
+            case 'status':
+            default:
+                return (statusOrder[sa.status] ?? 3) - (statusOrder[sb.status] ?? 3);
+        }
+    });
+
+    return result;
 }
 
 // ============================================================
@@ -337,22 +384,15 @@ function getFilteredServers() {
 // ============================================================
 function renderServers() {
     const grid = document.getElementById('serverGrid');
-    const filtered = getFilteredServers();
+    const filtered = getFilteredAndSortedServers();
 
     if (filtered.length === 0) {
         grid.innerHTML = '<div class="empty-state">Нет серверов, соответствующих фильтру.</div>';
         return;
     }
 
-    const order = { online: 0, checking: 1, offline: 2 };
-    filtered.sort((a, b) => {
-        const sa = serverStatuses[serverKey(a)]?.status || 'offline';
-        const sb = serverStatuses[serverKey(b)]?.status || 'offline';
-        return (order[sa] ?? 3) - (order[sb] ?? 3);
-    });
-
     grid.innerHTML = filtered.map(srv => cardHtml(srv)).join('');
-    bindCardClicks(grid);
+    bindCardEvents(grid);
 }
 
 function cardHtml(srv) {
@@ -367,19 +407,17 @@ function cardHtml(srv) {
         checking: 'Сканируется'
     };
 
+    // Название
     let titleSource = srv.motd || '';
-    if (status === 'online' && data.motd) {
-        titleSource = data.motd;
-    }
+    if (status === 'online' && data.motd) titleSource = data.motd;
     const title = stripMinecraftColors(titleSource.split('\n')[0]) || 'Без названия';
 
+    // MOTD
     let motdText = '';
-    if (status === 'online' && data.motd) {
-        motdText = data.motd;
-    } else {
-        motdText = stripMinecraftColors(srv.motd || '') || '—';
-    }
+    if (status === 'online' && data.motd) motdText = data.motd;
+    else motdText = stripMinecraftColors(srv.motd || '') || '—';
 
+    // Числовые поля
     const players = (status === 'online' && data.players != null)
         ? data.players : (srv.players_online ?? '—');
     const maxPlayers = (status === 'online' && data.maxPlayers != null)
@@ -387,22 +425,52 @@ function cardHtml(srv) {
     const version = (status === 'online' && data.version)
         ? data.version : (srv.version || '—');
 
+    // Полоска заполнения
+    let playerBar = '';
+    if (status === 'online' && typeof players === 'number' && typeof maxPlayers === 'number' && maxPlayers > 0) {
+        const percent = Math.min(100, Math.round((players / maxPlayers) * 100));
+        playerBar = `<div class="player-bar"><div class="player-bar-fill" style="width:${percent}%"></div></div>`;
+    }
+
+    // Иконка сервера
+    let iconHtml = '';
+    if (status === 'online' && data.icon) {
+        iconHtml = `<img src="${escapeHtml(data.icon)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<span class=\\'icon-placeholder\\'>⛏</span>'">`;
+    } else {
+        iconHtml = '<span class="icon-placeholder">⛏</span>';
+    }
+
+    // Источник
+    const sourceTag = (status !== 'checking' && data.source)
+        ? `<span class="source-tag" title="Источник данных">${escapeHtml(data.source)}</span>`
+        : '';
+
     return `
         <div class="server-card ${status}" data-key="${escapeHtml(key)}">
-            <div class="card-header">
-                <div class="server-name">${escapeHtml(title)}</div>
-                <div class="status-badge ${status}">
-                    ${status === 'checking' ? '<span class="loading-spinner"></span>' : ''}
-                    ${statusLabels[status] || status}
+            <div class="card-main">
+                <div class="server-icon">${iconHtml}</div>
+                <div class="card-content">
+                    <div class="card-header">
+                        <div class="server-name">${escapeHtml(title)}</div>
+                        <div class="status-badge ${status}">
+                            ${status === 'checking' ? '<span class="loading-spinner"></span>' : ''}
+                            ${statusLabels[status] || status}
+                        </div>
+                    </div>
+                    <div class="server-address" data-address="${escapeHtml(srv.address + ':' + srv.port)}" title="Нажмите, чтобы скопировать">
+                        ${escapeHtml(srv.address)}:${srv.port}
+                        <span class="copy-hint">📋</span>
+                    </div>
+                    <div class="server-motd">${escapeHtml(motdText)}</div>
+                    <div class="card-footer">
+                        <div class="player-count">
+                            👥 <span class="count">${escapeHtml(String(players))}</span> / ${escapeHtml(String(maxPlayers))}
+                            ${playerBar}
+                        </div>
+                        <div class="version-tag" title="${escapeHtml(String(version))}">${escapeHtml(String(version))}</div>
+                    </div>
+                    ${sourceTag ? `<div style="margin-top:8px;text-align:right;">${sourceTag}</div>` : ''}
                 </div>
-            </div>
-            <div class="server-address">${escapeHtml(srv.address)}:${srv.port}</div>
-            <div class="server-motd">${escapeHtml(motdText)}</div>
-            <div class="card-footer">
-                <div class="player-count">
-                    👥 <span class="count">${escapeHtml(String(players))}</span> / ${escapeHtml(String(maxPlayers))}
-                </div>
-                <div class="version-tag" title="${escapeHtml(String(version))}">${escapeHtml(String(version))}</div>
             </div>
         </div>
     `;
@@ -420,21 +488,29 @@ function updateCard(key) {
     const newCard = temp.firstElementChild;
 
     card.replaceWith(newCard);
-
-    newCard.addEventListener('click', () => {
-        const s = allServers.find(ss => serverKey(ss) === key);
-        if (s) checkSingleServer(s);
-    });
+    bindSingleCardEvents(newCard);
 }
 
-function bindCardClicks(container) {
-    container.querySelectorAll('.server-card').forEach(card => {
-        card.addEventListener('click', () => {
-            const key = card.getAttribute('data-key');
-            const srv = allServers.find(s => serverKey(s) === key);
-            if (srv) checkSingleServer(srv);
+function bindSingleCardEvents(card) {
+    const addr = card.querySelector('.server-address');
+    if (addr) {
+        addr.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const text = addr.getAttribute('data-address');
+            try {
+                await navigator.clipboard.writeText(text);
+                addr.classList.add('copied');
+                showToast('📋 Адрес скопирован: ' + text);
+                setTimeout(() => addr.classList.remove('copied'), 1200);
+            } catch {
+                showToast('❌ Не удалось скопировать');
+            }
         });
-    });
+    }
+}
+
+function bindCardEvents(container) {
+    container.querySelectorAll('.server-card').forEach(bindSingleCardEvents);
 }
 
 // ============================================================
@@ -463,13 +539,41 @@ function updateStats() {
 function updateLastUpdate() {
     const el = document.getElementById('lastUpdate');
     if (!el) return;
-
     const last = Number(localStorage.getItem(LAST_SCAN_KEY) || Date.now());
     const date = new Date(last);
-    const time = date.toLocaleTimeString('ru-RU');
-    const dateStr = date.toLocaleDateString('ru-RU');
+    el.textContent = `Последнее сканирование: ${date.toLocaleDateString('ru-RU')} в ${date.toLocaleTimeString('ru-RU')}`;
+}
 
-    el.textContent = `Последнее сканирование: ${dateStr} в ${time}`;
+// ============================================================
+//  ЭКСПОРТ
+// ============================================================
+function exportResults() {
+    const data = allServers.map(srv => {
+        const st = serverStatuses[serverKey(srv)] || {};
+        const d = st.data || {};
+        return {
+            address: srv.address,
+            port: srv.port,
+            status: st.status || 'unknown',
+            online: st.status === 'online',
+            players: d.players ?? null,
+            maxPlayers: d.maxPlayers ?? null,
+            version: d.version || srv.version || null,
+            motd: d.motd || srv.motd || null,
+            hasIcon: !!d.icon,
+            source: d.source || null,
+            scannedAt: new Date().toISOString()
+        };
+    });
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mcscanner-results-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('💾 Результаты сохранены');
 }
 
 // ============================================================
@@ -490,7 +594,9 @@ function hideError() {
 // ============================================================
 document.getElementById('searchInput').addEventListener('input', renderServers);
 document.getElementById('filterSelect').addEventListener('change', renderServers);
+document.getElementById('sortSelect').addEventListener('change', renderServers);
 document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+document.getElementById('exportBtn').addEventListener('click', exportResults);
 
 // ============================================================
 //  СТАРТ
@@ -498,7 +604,8 @@ document.getElementById('refreshBtn').addEventListener('click', refreshAll);
 document.getElementById('year').textContent = new Date().getFullYear();
 
 console.log(`[${APP_NAME}] Запущено. Автор: ${APP_AUTHOR}.`);
-console.log(`[${APP_NAME}] Сегодня ${isWeekend() ? 'выходной — приоритетное сканирование' : 'будний день'}.`);
+console.log(`[${APP_NAME}] Задержка между запросами: ${API_DELAY_MS} мс.`);
+console.log(`[${APP_NAME}] Сегодня ${isWeekend() ? 'выходной' : 'будний день'}.`);
 
 if (shouldAutoScan()) {
     console.log(`[${APP_NAME}] Запуск еженедельного сканирования...`);
