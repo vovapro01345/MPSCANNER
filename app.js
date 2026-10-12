@@ -1,5 +1,5 @@
 // ============================================================
-//  MCscanner — by Real_Studio — v3.0
+//  MCscanner — by Real_Studio — v3.1
 //  Собственный движок сканирования + cross-verification
 //  API используются как "пробы" для проверки работы серверов
 // ============================================================
@@ -20,11 +20,11 @@ const LS = {
 };
 
 const SCANNER_CONFIG = {
-    delayMs: 1500,           // задержка между серверами
-    cacheTTL: 5 * 60 * 1000, // TTL кэша результатов
-    probeTimeoutMs: 12000,   // таймаут одной пробы
-    retryMax: 1,             // 1 retry при ошибке
-    retryBackoffMs: [2000],  // backoff перед retry
+    delayMs: 1500,
+    cacheTTL: 5 * 60 * 1000,
+    probeTimeoutMs: 12000,
+    retryMax: 1,
+    retryBackoffMs: [2000],
     autoScanIntervalMs: 7 * 24 * 60 * 60 * 1000
 };
 
@@ -33,7 +33,7 @@ const LOGS_MAX = 300;
 const PAGE_SIZE = 40;
 
 // ============================================================
-//  ПРОБЫ (API endpoints) — только для проверки работы серверов
+//  ПРОБЫ (API endpoints)
 // ============================================================
 const PROBES = [
     {
@@ -41,7 +41,7 @@ const PROBES = [
         name: 'mcsrvstat.us',
         role: 'primary',
         url: (h, p) => `https://api.mcsrvstat.us/3/${h}${p && p !== 25565 ? ':' + p : ''}`,
-        headers: { 'User-Agent': `${APP_NAME}/3.0 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/3.1 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false || d.online === undefined) return { online: false };
             return {
@@ -98,7 +98,7 @@ const PROBES = [
         name: 'mcsrvstat.us (bedrock)',
         role: 'bedrock',
         url: (h) => `https://api.mcsrvstat.us/bedrock/3/${h}:19132`,
-        headers: { 'User-Agent': `${APP_NAME}/3.0 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/3.1 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false) return { online: false };
             return {
@@ -115,13 +115,13 @@ const PROBES = [
 ];
 
 // ============================================================
-//  ЯДРО СКАНЕРА — наш собственный движок
+//  ЯДРО СКАНЕРА
 // ============================================================
 class ServerScanner {
     constructor(config) {
         this.config = { ...SCANNER_CONFIG, ...config };
-        this.cache = new Map();          // key -> { t, result }
-        this.probeStats = new Map();     // probeId -> { ok, fail, totalMs }
+        this.cache = new Map();
+        this.probeStats = new Map();
         this.events = {};
         this.aborted = false;
         this.running = false;
@@ -136,7 +136,6 @@ class ServerScanner {
         (this.events[evt] || []).forEach(cb => { try { cb(data); } catch {} });
     }
 
-    // --- Одна проба с таймаутом ---
     async queryProbe(probe, address, port) {
         const t0 = performance.now();
         const controller = new AbortController();
@@ -169,7 +168,6 @@ class ServerScanner {
         }
     }
 
-    // --- Проба с retry и backoff ---
     async probeWithRetry(probe, address, port) {
         let lastResult;
         for (let attempt = 0; attempt <= this.config.retryMax; attempt++) {
@@ -192,56 +190,38 @@ class ServerScanner {
         this.probeStats.set(probeId, s);
     }
 
-    // --- Cross-verification: сверка ответов проб ---
     crossVerify(results) {
         const successful = results.filter(r => r.ok && r.data);
         const failed = results.filter(r => !r.ok);
 
         if (successful.length === 0) {
             return {
-                online: false,
-                confidence: 0,
-                verified: false,
-                conflict: false,
+                online: false, confidence: 0, verified: false, conflict: false,
                 probes: results.map(r => this.probeInfo(r)),
                 reason: 'no_probe_succeeded'
             };
         }
 
-        // Считаем голоса
         const onlineVotes = successful.filter(r => r.data.online).length;
         const offlineVotes = successful.length - onlineVotes;
-        const decision = onlineVotes > offlineVotes
-            ? true
-            : offlineVotes > onlineVotes
-                ? false
-                : successful[0].data.online; // ничья → первый
+        const decision = onlineVotes > offlineVotes ? true
+            : offlineVotes > onlineVotes ? false
+            : successful[0].data.online;
 
         const agreeing = successful.filter(r => !!r.data.online === decision);
         const disagreeing = successful.filter(r => !!r.data.online !== decision);
-
-        // Confidence = доля согласных среди всех ответивших
         const confidence = Math.round((agreeing.length / successful.length) * 100);
-
-        // Конфликт = есть disagreement среди успешных проб
         const conflict = disagreeing.length > 0;
-
-        // Верификация: 2+ успешных проб, из них 2+ согласны
         const verified = successful.length >= 2 && agreeing.length >= 2;
 
         if (!decision) {
             return {
-                online: false,
-                confidence,
-                verified,
-                conflict,
+                online: false, confidence, verified, conflict,
                 probes: results.map(r => this.probeInfo(r, decision)),
-                agreeCount: agreeing.length,
-                totalCount: successful.length
+                agreeCount: agreeing.length, totalCount: successful.length
             };
         }
 
-        // Агрегируем данные через медиану (устойчиво к выбросам)
         const onlineData = agreeing.filter(r => r.data.online).map(r => r.data);
         const players = this.median(onlineData.map(d => d.players).filter(n => typeof n === 'number'));
         const maxPlayers = this.median(onlineData.map(d => d.maxPlayers).filter(n => typeof n === 'number'));
@@ -252,12 +232,10 @@ class ServerScanner {
         const playerList = onlineData.find(d => Array.isArray(d.playerList) && d.playerList.length > 0)?.playerList || null;
 
         return {
-            online: true,
-            players, maxPlayers, version, motd, icon, playerList,
+            online: true, players, maxPlayers, version, motd, icon, playerList,
             confidence, verified, conflict,
             probes: results.map(r => this.probeInfo(r, decision)),
-            agreeCount: agreeing.length,
-            totalCount: successful.length,
+            agreeCount: agreeing.length, totalCount: successful.length,
             failedCount: failed.length
         };
     }
@@ -268,11 +246,9 @@ class ServerScanner {
         }
         const agrees = typeof decision === 'boolean' && (!!result.data.online === decision);
         return {
-            id: result.probeId,
-            name: result.probeName,
+            id: result.probeId, name: result.probeName,
             status: typeof decision === 'boolean' ? (agrees ? 'agree' : 'disagree') : 'ok',
-            online: result.data.online,
-            ms: result.ms
+            online: result.data.online, ms: result.ms
         };
     }
 
@@ -283,11 +259,8 @@ class ServerScanner {
         return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
     }
 
-    // --- Сканирование одного сервера ---
     async scanServer(server) {
         const key = `${server.address}:${server.port}`;
-
-        // Проверка кэша
         const cached = this.cache.get(key);
         if (cached && (Date.now() - cached.t) < this.config.cacheTTL) {
             const result = { ...cached.result, fromCache: true };
@@ -301,7 +274,6 @@ class ServerScanner {
         const secondary = PROBES.find(p => p.role === 'secondary');
         const tiebreaker = PROBES.find(p => p.role === 'tiebreaker');
 
-        // Параллельно: primary + secondary
         const [r1, r2] = await Promise.all([
             this.probeWithRetry(primary, server.address, server.port),
             this.probeWithRetry(secondary, server.address, server.port)
@@ -309,7 +281,6 @@ class ServerScanner {
 
         let allResults = [r1, r2];
 
-        // Проверяем, нужен ли tiebreaker
         const bothOk = r1.ok && r2.ok;
         const agree = bothOk && !!r1.data.online === !!r2.data.online;
         const needTiebreaker = !bothOk || !agree;
@@ -319,18 +290,13 @@ class ServerScanner {
             allResults.push(r3);
         }
 
-        // Cross-verification
         const verified = this.crossVerify(allResults);
         const result = { ...verified, scannedAt: Date.now() };
-
-        // Кэшируем
         this.cache.set(key, { t: Date.now(), result });
-
         this.emit('server:scanned', { server, result });
         return result;
     }
 
-    // --- Сканирование всех серверов ---
     async scanAll(servers) {
         if (this.running) return;
         this.running = true;
@@ -343,16 +309,10 @@ class ServerScanner {
 
         for (const server of servers) {
             if (this.aborted) break;
-
-            try {
-                await this.scanServer(server);
-            } catch (err) {
-                this.emit('server:error', { server, error: err.message });
-            }
-
+            try { await this.scanServer(server); }
+            catch (err) { this.emit('server:error', { server, error: err.message }); }
             done++;
             this.emit('scan:progress', { done, total, server });
-
             if (done < total && !this.aborted) {
                 await new Promise(r => setTimeout(r, this.config.delayMs));
             }
@@ -371,12 +331,12 @@ class ServerScanner {
 //  СОСТОЯНИЕ
 // ============================================================
 let allServers = [];
-let serverResults = {}; // key -> result от сканера
+let serverResults = {};
 let scanner = null;
 let currentFiltered = [];
 let displayedCount = 0;
 let renameMode = false;
-let bedrockSupport = {}; // key -> bool
+let bedrockSupport = {};
 let scanMetrics = { agreeSum: 0, agreeCount: 0, latencySum: 0, latencyCount: 0, conflicts: 0, verified: 0 };
 
 // ============================================================
@@ -415,7 +375,6 @@ function lsGet(key, fallback) {
 }
 function lsSet(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
-// Favorites
 const getFavorites = () => lsGet(LS.favorites, []);
 const isFavorite = (k) => getFavorites().includes(k);
 function toggleFavorite(k) {
@@ -426,7 +385,6 @@ function toggleFavorite(k) {
     return isFavorite(k);
 }
 
-// Last seen
 const getLastSeenMap = () => lsGet(LS.lastSeen, {});
 function updateLastSeen(k, online) {
     if (!online) return;
@@ -447,7 +405,6 @@ function formatLastSeen(ts) {
     return new Date(ts).toLocaleDateString('ru-RU');
 }
 
-// Custom names
 const getCustomNames = () => lsGet(LS.names, {});
 function setCustomName(k, name) {
     const m = getCustomNames();
@@ -456,7 +413,6 @@ function setCustomName(k, name) {
 }
 function getCustomName(k) { return getCustomNames()[k] || null; }
 
-// Notifications
 function notifEnabled() { return lsGet(LS.notif, false) === true; }
 async function toggleNotifications() {
     if (notifEnabled()) {
@@ -473,6 +429,7 @@ async function toggleNotifications() {
 }
 function updateNotifBtn() {
     const btn = document.getElementById('notifToggle');
+    if (!btn) return;
     btn.classList.toggle('active', notifEnabled());
     btn.textContent = notifEnabled() ? '🔔' : '🔕';
 }
@@ -482,7 +439,6 @@ function notify(title, body) {
     try { new Notification(title, { body }); } catch {}
 }
 
-// Theme
 function applyTheme() {
     let theme = localStorage.getItem(LS.theme);
     if (!theme) theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
@@ -495,7 +451,6 @@ function toggleTheme() {
     applyTheme();
 }
 
-// Sound
 function playBeep() {
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -509,7 +464,6 @@ function playBeep() {
     } catch {}
 }
 
-// Tags
 const TAG_KEYWORDS = {
     survival: ['survival', 'выживание', 'smp'],
     pvp: ['pvp', 'crystal pvp', 'кристал'],
@@ -543,7 +497,6 @@ function extractDiscord(motd) {
     return m2 ? m2[1] : null;
 }
 
-// Logs
 const getLogs = () => lsGet(LS.logs, []);
 function addLog(level, msg) {
     const logs = getLogs();
@@ -552,7 +505,6 @@ function addLog(level, msg) {
     lsSet(LS.logs, logs);
 }
 
-// History
 const getHistory = () => lsGet(LS.history, []);
 function saveHistory() {
     const snapshot = {
@@ -568,6 +520,41 @@ function saveHistory() {
     h.unshift(snapshot);
     if (h.length > HISTORY_MAX) h.length = HISTORY_MAX;
     lsSet(LS.history, h);
+}
+
+// ============================================================
+//  URL PRESETS
+// ============================================================
+function readUrlParams() {
+    const p = new URLSearchParams(location.search);
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val) el.value = val;
+    };
+    set('searchInput', p.get('q'));
+    set('filterSelect', p.get('filter'));
+    set('tagFilter', p.get('tag'));
+    set('versionFilter', p.get('ver'));
+    set('sortSelect', p.get('sort'));
+}
+
+function writeUrlParams() {
+    const p = new URLSearchParams();
+    const v = (id) => document.getElementById(id)?.value;
+    if (v('searchInput')) p.set('q', v('searchInput'));
+    if (v('filterSelect') && v('filterSelect') !== 'all') p.set('filter', v('filterSelect'));
+    if (v('tagFilter')) p.set('tag', v('tagFilter'));
+    if (v('versionFilter')) p.set('ver', v('versionFilter'));
+    if (v('sortSelect') && v('sortSelect') !== 'status') p.set('sort', v('sortSelect'));
+
+    const newUrl = p.toString() ? `?${p}` : location.pathname;
+    history.replaceState(null, '', newUrl);
+}
+
+function copyShareUrl() {
+    navigator.clipboard.writeText(location.href).then(() => {
+        showToast('🔗 Ссылка скопирована');
+    }).catch(() => showToast('❌ Не удалось скопировать'));
 }
 
 // ============================================================
@@ -592,7 +579,6 @@ function createScanner() {
         const prev = serverResults[key];
         serverResults[key] = result;
 
-        // Метрики
         if (typeof result.confidence === 'number') {
             scanMetrics.agreeSum += result.confidence;
             scanMetrics.agreeCount++;
@@ -608,14 +594,12 @@ function createScanner() {
         if (result.conflict) scanMetrics.conflicts++;
         if (result.verified) scanMetrics.verified++;
 
-        // Уведомление о падении
         if (prev && prev.online === true && result.online === false && isFavorite(key)) {
             notify('⚠️ Сервер упал', key);
         }
 
         updateLastSeen(key, result.online);
 
-        // Bedrock проверка (асинхронно)
         if (bedrockSupport[key] === undefined) {
             const bedrockProbe = PROBES.find(p => p.role === 'bedrock');
             scanner.queryProbe(bedrockProbe, server.address).then(bres => {
@@ -644,6 +628,7 @@ function updateProgress(cur, total, name) {
     const f = document.getElementById('progressBarFill');
     const t = document.getElementById('progressText');
     const n = document.getElementById('progressCurrent');
+    if (!c) return;
     if (cur === 0) { c.style.display = 'none'; return; }
     c.style.display = 'block';
     f.style.width = Math.round((cur / total) * 100) + '%';
@@ -665,10 +650,11 @@ function updateScannerPanel() {
     const avgLatency = scanMetrics.latencyCount > 0
         ? Math.round(scanMetrics.latencySum / scanMetrics.latencyCount) : 0;
 
-    document.getElementById('spAgreement').textContent = avgAgree + '%';
-    document.getElementById('spLatency').textContent = avgLatency + ' мс';
-    document.getElementById('spVerified').textContent = scanMetrics.verified;
-    document.getElementById('spConflicts').textContent = scanMetrics.conflicts;
+    const el = (id) => document.getElementById(id);
+    if (el('spAgreement')) el('spAgreement').textContent = avgAgree + '%';
+    if (el('spLatency')) el('spLatency').textContent = avgLatency + ' мс';
+    if (el('spVerified')) el('spVerified').textContent = scanMetrics.verified;
+    if (el('spConflicts')) el('spConflicts').textContent = scanMetrics.conflicts;
 }
 
 // ============================================================
@@ -739,7 +725,6 @@ async function startScan() {
     });
 }
 
-// Обновить одну карточку
 function updateCard(key) {
     const card = document.querySelector(`.server-card[data-key="${CSS.escape(key)}"]`);
     if (!card) return;
@@ -902,7 +887,6 @@ function cardHtml(srv) {
         iconHtml = `<img src="${escapeHtml(r.icon)}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<span class=\\'icon-placeholder\\'>⛏</span>'">`;
     }
 
-    // Чипы проб (cross-verification)
     let probesHtml = '';
     if (Array.isArray(r.probes) && r.probes.length > 0) {
         probesHtml = `<div class="probe-chips">${r.probes.map(p => {
@@ -919,7 +903,6 @@ function cardHtml(srv) {
         </div>`;
     }
 
-    // Confidence bar
     let confHtml = '';
     if (typeof r.confidence === 'number' && !scanning) {
         const cls = r.confidence >= 90 ? 'high' : r.confidence >= 60 ? 'medium' : 'low';
@@ -930,7 +913,6 @@ function cardHtml(srv) {
             </div>`;
     }
 
-    // Теги
     const tags = extractTags(r.motd || srv.motd, r.version || srv.version);
     const discord = extractDiscord(r.motd || srv.motd);
     const hasBedrock = bedrockSupport[key] === true;
@@ -1344,15 +1326,21 @@ document.getElementById('installBtn').addEventListener('click', async () => {
 // ============================================================
 //  EVENTS
 // ============================================================
-document.getElementById('searchInput').addEventListener('input', () => renderServers(true));
-document.getElementById('filterSelect').addEventListener('change', () => renderServers(true));
-document.getElementById('tagFilter').addEventListener('change', () => renderServers(true));
-document.getElementById('versionFilter').addEventListener('change', () => renderServers(true));
-document.getElementById('sortSelect').addEventListener('change', () => renderServers(true));
+['searchInput','filterSelect','tagFilter','versionFilter','sortSelect'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const evt = id === 'searchInput' ? 'input' : 'change';
+    el.addEventListener(evt, () => {
+        renderServers(true);
+        writeUrlParams();
+    });
+});
+
 document.getElementById('refreshBtn').addEventListener('click', () => { scanner?.clearCache(); startScan(); });
 document.getElementById('stopBtn').addEventListener('click', () => {
     if (scanner) { scanner.abort(); showToast('⏹ Сканирование остановлено'); }
 });
+document.getElementById('shareBtn').addEventListener('click', copyShareUrl);
 document.getElementById('exportBtn').addEventListener('click', exportJson);
 document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
@@ -1406,8 +1394,9 @@ document.getElementById('year').textContent = new Date().getFullYear();
 applyTheme();
 updateNotifBtn();
 registerSW();
+readUrlParams();
 
-addLog('ok', `${APP_NAME} v3.0 — собственный движок сканирования`);
+addLog('ok', `${APP_NAME} v3.1 — собственный движок сканирования`);
 console.log(`[${APP_NAME}] Сканер запущен. Автор: ${APP_AUTHOR}.`);
 console.log(`[${APP_NAME}] Конфиг: ${JSON.stringify(SCANNER_CONFIG)}`);
 
