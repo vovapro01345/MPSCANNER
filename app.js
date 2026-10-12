@@ -14,8 +14,8 @@ const LAST_SCAN_KEY = 'mcscanner_last_scan';
 const RESCAN_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Задержка между запросами к API (в миллисекундах)
-// Увеличена до 1500 мс, чтобы избежать ошибки 429
-const API_DELAY_MS = 1500;
+// Увеличена до 2000 мс, чтобы избежать ошибки 429
+const API_DELAY_MS = 2000;
 
 // Бесплатные API без ключей
 const API_ENDPOINTS = [
@@ -53,6 +53,29 @@ const API_ENDPOINTS = [
                 maxPlayers: data.players ? (data.players.max ?? 0) : 0,
                 version: data.version ? (data.version.name_raw || data.version.name_clean || '—') : '—',
                 motd: data.motd ? (data.motd.clean || '') : ''
+            };
+        }
+    },
+    {
+        name: 'mcapi.us',
+        // Документация: https://mcapi.us/server/status?ip=...&port=...
+        // CORS включён, JSONP не поддерживается
+        url: (host, port) =>
+            `https://mcapi.us/server/status?ip=${encodeURIComponent(host)}${port && port !== 25565 ? '&port=' + port : ''}`,
+        headers: {
+            'Accept': 'application/json'
+        },
+        parse: (data) => {
+            // mcapi.us возвращает status: "success" при успехе
+            if (!data || data.status !== 'success' || data.online === false) {
+                return { online: false };
+            }
+            return {
+                online: true,
+                players: data.players ? (data.players.now ?? 0) : 0,
+                maxPlayers: data.players ? (data.players.max ?? 0) : 0,
+                version: data.server ? (data.server.name || '—') : '—',
+                motd: data.motd || ''
             };
         }
     }
