@@ -21,7 +21,6 @@ body.light {
     --accent-2: #2563eb;
     --gradient-1: linear-gradient(135deg, #059669, #2563eb);
 }
-/* Акцентные темы */
 body.accent-green { --accent: #34d399; --accent-2: #10b981; --gradient-1: linear-gradient(135deg,#34d399,#10b981); }
 body.accent-orange { --accent: #fb923c; --accent-2: #f97316; --gradient-1: linear-gradient(135deg,#fb923c,#f97316); }
 body.accent-pink { --accent: #f472b6; --accent-2: #ec4899; --gradient-1: linear-gradient(135deg,#f472b6,#ec4899); }
@@ -34,6 +33,22 @@ body {
     background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px;
     transition: background 0.3s, color 0.3s;
 }
+
+/* Drop overlay */
+.drop-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15, 15, 26, 0.9);
+    backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9999; border: 3px dashed var(--accent);
+    padding: 40px;
+}
+.drop-overlay.show { display: flex; }
+.drop-content { text-align: center; color: var(--text); }
+.drop-icon { font-size: 4rem; margin-bottom: 16px; animation: drop-bounce 1s infinite; }
+@keyframes drop-bounce { 0%,100%{transform: translateY(0);} 50%{transform: translateY(-10px);} }
+.drop-title { font-size: 1.5rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.drop-sub { color: var(--text-dim); font-size: 0.9rem; }
 
 .topbar {
     position: fixed; top: 20px; right: 20px;
@@ -85,6 +100,10 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 }
 .scan-info b { color: var(--accent); }
 .scan-info small { color: var(--warn); font-size: 0.8rem; }
+.scan-info code {
+    background: var(--tag-bg); padding: 1px 6px; border-radius: 4px;
+    color: var(--accent); font-family: ui-monospace, monospace;
+}
 
 .scanner-panel {
     max-width: 780px; margin: 0 auto 20px; padding: 14px 20px;
@@ -107,7 +126,6 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); width: 0%; transition: width 0.3s; }
 .progress-current { margin-top: 8px; font-size: 0.78rem; color: var(--text-mute); font-family: ui-monospace, monospace; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Пресеты */
 .presets {
     display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
     margin-bottom: 14px; max-width: 900px; margin-left: auto; margin-right: auto;
@@ -128,7 +146,7 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     font-family: inherit; transition: border-color 0.2s;
 }
 .controls input:focus, .controls select:focus { border-color: var(--accent-2); }
-.range-input { width: 100px; }
+.range-input { width: 90px; }
 
 .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
 .actions button {
@@ -148,7 +166,6 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
 .stat-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* ---- Grid view ---- */
 .server-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
 .server-card {
     background: var(--card-bg); border-radius: 14px; padding: 16px;
@@ -244,8 +261,6 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .server-address:hover .copy-hint { opacity: 1; }
 .server-address.copied { color: var(--success); background: rgba(34, 197, 94, 0.1); }
 
-.geo-flag { font-size: 0.85rem; margin-right: 2px; cursor: help; }
-
 .server-motd {
     font-size: 0.82rem; color: var(--text-dim);
     margin-bottom: 8px; line-height: 1.4; word-break: break-word;
@@ -307,17 +322,16 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---- Table view ---- */
+/* Table view */
 .server-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-bg); }
 .server-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; min-width: 900px; }
 .server-table thead th {
     background: var(--tag-bg); color: var(--text-dim);
     padding: 10px 12px; text-align: left; font-weight: 700;
     font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--card-border); cursor: pointer;
+    border-bottom: 1px solid var(--card-border);
     white-space: nowrap; user-select: none;
 }
-.server-table thead th:hover { color: var(--text); }
 .server-table tbody tr {
     border-bottom: 1px solid var(--card-border); cursor: pointer;
     transition: background 0.15s;
@@ -340,7 +354,7 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .server-table .tbl-badge.offline { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 .server-table .tbl-badge.checking { background: rgba(234, 179, 8, 0.15); color: var(--warn); }
 
-/* ---- Grouped view ---- */
+/* Grouped view */
 .ip-group {
     background: var(--card-bg); border: 1px solid var(--card-border);
     border-radius: 12px; margin-bottom: 12px; overflow: hidden;
@@ -363,7 +377,6 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .ip-group.expanded .ip-group-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
 .ip-group-body .server-card { background: var(--bg); }
 
-/* ---- Modals / misc ---- */
 .empty-state {
     grid-column: 1 / -1; text-align: center; padding: 60px 20px;
     color: var(--text-mute); line-height: 1.6;
@@ -457,14 +470,6 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .diff-row.down { border-left: 3px solid var(--danger); }
 .diff-row.players { border-left: 3px solid var(--warn); }
 
-.geo-row {
-    display: flex; gap: 10px; align-items: center;
-    padding: 6px 10px; border-radius: 6px; margin-bottom: 3px;
-    background: var(--tag-bg); font-size: 0.82rem;
-    font-family: ui-monospace, monospace;
-}
-.geo-row .ip { font-weight: 700; color: var(--accent); min-width: 140px; }
-
 .qr-wrap { text-align: center; padding: 20px; }
 .qr-wrap img { border-radius: 12px; background: #fff; padding: 10px; }
 
@@ -507,4 +512,6 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     .topbar { top: 10px; right: 10px; max-width: 70vw; }
     .icon-btn { width: 36px; height: 36px; font-size: 0.95rem; }
     .ip-group-body { grid-template-columns: 1fr; }
+    .drop-icon { font-size: 3rem; }
+    .drop-title { font-size: 1.2rem; }
 }
