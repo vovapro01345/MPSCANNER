@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCscanner — by Real_Studio</title>
-    <meta name="description" content="MCscanner — сканер Minecraft-серверов от Real_Studio. История, иконки, избранное, PWA.">
+    <meta name="description" content="MCscanner — собственный сканер Minecraft-серверов от Real_Studio с cross-verification через публичные API.">
     <meta name="theme-color" content="#0f0f1a">
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
@@ -34,15 +34,40 @@
         <header>
             <h1>⛏ MCscanner</h1>
             <p class="subtitle">
-                Сканер Minecraft-серверов · <span class="brand">Real_Studio</span>
+                Собственный сканер Minecraft-серверов · <span class="brand">Real_Studio</span>
             </p>
             <div class="scan-info">
-                📅 Сканирование <b>каждую неделю по выходным</b> (сб–вс) через публичные API.
-                <br><small>Задержка 1.5 сек · 200 серверов ≈ 5 мин · работает офлайн (PWA)</small>
+                🔬 <b>Свой движок сканирования</b>: параллельные пробы, cross-verification, медиана значений, retry с backoff.
+                API используются как <b>пробы</b> для проверки работы серверов.
+                <br><small>Задержка 1.5 сек · 2–3 пробы на сервер · работает офлайн (PWA)</small>
             </div>
         </header>
 
         <div class="error-banner" id="errorBanner"></div>
+
+        <!-- Панель состояния сканера -->
+        <div class="scanner-panel" id="scannerPanel" style="display:none;">
+            <div class="sp-row">
+                <span class="sp-label">⏳ Прогресс:</span>
+                <span class="sp-value" id="spProgress">0 / 0</span>
+            </div>
+            <div class="sp-row">
+                <span class="sp-label">🎯 Согласие проб:</span>
+                <span class="sp-value" id="spAgreement">—</span>
+            </div>
+            <div class="sp-row">
+                <span class="sp-label">📡 Средний отклик:</span>
+                <span class="sp-value" id="spLatency">—</span>
+            </div>
+            <div class="sp-row">
+                <span class="sp-label">✅ Проверено:</span>
+                <span class="sp-value" id="spVerified">0</span>
+            </div>
+            <div class="sp-row">
+                <span class="sp-label">⚠️ Конфликты:</span>
+                <span class="sp-value" id="spConflicts">0</span>
+            </div>
+        </div>
 
         <div class="progress-container" id="progressContainer" style="display: none;">
             <div class="progress-info">
@@ -65,8 +90,8 @@
                 <option value="with-icon">🖼️ С иконкой</option>
                 <option value="has-players">👥 С игроками</option>
                 <option value="discord">💬 С Discord</option>
-                <option value="cracked">🏴‍☠️ Пиратские</option>
-                <option value="premium">🔒 Лицензионные</option>
+                <option value="confident">🎯 С высокой уверенностью</option>
+                <option value="conflicts">⚠️ Спорные</option>
             </select>
             <select id="tagFilter">
                 <option value="">🏷️ Любой тег</option>
@@ -97,6 +122,7 @@
             </select>
             <select id="sortSelect">
                 <option value="status">Сортировка: по статусу</option>
+                <option value="confidence-desc">🎯 По уверенности</option>
                 <option value="fill-desc">🔥 По заполненности</option>
                 <option value="players-desc">Игроков: больше → меньше</option>
                 <option value="players-asc">Игроков: меньше → больше</option>
@@ -108,13 +134,15 @@
 
         <div class="actions">
             <button id="refreshBtn" type="button" class="primary">🔄 Обновить всё</button>
-            <button id="renameModeBtn" type="button" class="secondary" title="Переименовать серверы">✏️ Имена</button>
+            <button id="stopBtn" type="button" class="secondary" style="display:none;">⏹ Стоп</button>
+            <button id="renameModeBtn" type="button" class="secondary">✏️ Имена</button>
             <button id="exportBtn" type="button" class="secondary">💾 JSON</button>
             <button id="exportCsvBtn" type="button" class="secondary">📊 CSV</button>
             <button id="historyBtn" type="button" class="secondary">📜 История</button>
             <button id="compareBtn" type="button" class="secondary">🔀 Сравнить</button>
             <button id="logBtn" type="button" class="secondary">📋 Лог</button>
-            <button id="clearCacheBtn" type="button" class="secondary" title="Очистить кэш API">🗑️ Кэш</button>
+            <button id="probeStatsBtn" type="button" class="secondary">📡 Пробы</button>
+            <button id="clearCacheBtn" type="button" class="secondary" title="Очистить кэш сканера">🗑️ Кэш</button>
         </div>
 
         <div class="stats-bar">
@@ -122,7 +150,7 @@
             <div class="stat"><div class="stat-value" id="onlineCount" style="color:#22c55e;">—</div><div class="stat-label">Онлайн</div></div>
             <div class="stat"><div class="stat-value" id="offlineCount" style="color:#ef4444;">—</div><div class="stat-label">Офлайн</div></div>
             <div class="stat"><div class="stat-value" id="playersTotal" style="color:#3b82f6;">—</div><div class="stat-label">Игроков</div></div>
-            <div class="stat"><div class="stat-value" id="onlinePercent" style="color:#6ee7b7;">—</div><div class="stat-label">% онлайна</div></div>
+            <div class="stat"><div class="stat-value" id="avgConfidence" style="color:#6ee7b7;">—</div><div class="stat-label">Ср. уверенность</div></div>
         </div>
 
         <div class="server-grid" id="serverGrid">
@@ -141,7 +169,6 @@
         </footer>
     </div>
 
-    <!-- Универсальное модальное окно -->
     <div class="modal-backdrop" id="modalBackdrop">
         <div class="modal">
             <div class="modal-header">
