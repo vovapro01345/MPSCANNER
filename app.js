@@ -1,7 +1,8 @@
 // ============================================================
-//  MCscanner — by Real_Studio — v4.2
+//  MCscanner — by Real_Studio — v4.3
 //  Свой движок сканирования + cross-verification + Import JSON
 //  + Игрок в углу (UUID ab536313-1bed-468c-98d9-871c2f86b21d)
+//  + Network-first Service Worker (без Ctrl+Shift+R)
 // ============================================================
 
 const APP_NAME = 'MCscanner';
@@ -169,13 +170,13 @@ function toggleLang() {
 }
 
 // ============================================================
-//  ПРОБЫ
+//  ПРОБЫ (API endpoints — только для проверки работы серверов)
 // ============================================================
 const PROBES = [
     {
         id: 'mcsrvstat', name: 'mcsrvstat.us', role: 'primary',
         url: (h, p) => `https://api.mcsrvstat.us/3/${h}${p && p !== 25565 ? ':' + p : ''}`,
-        headers: { 'User-Agent': `${APP_NAME}/4.2 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/4.3 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false || d.online === undefined) return { online: false };
             return {
@@ -216,7 +217,7 @@ const PROBES = [
     {
         id: 'bedrock', name: 'mcsrvstat.us (bedrock)', role: 'bedrock',
         url: (h) => `https://api.mcsrvstat.us/bedrock/3/${h}:19132`,
-        headers: { 'User-Agent': `${APP_NAME}/4.2 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/4.3 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false) return { online: false };
             return {
@@ -1806,12 +1807,31 @@ function showToast(msg) {
 }
 
 // ============================================================
-//  SW / PWA
+//  SW / PWA  (network-first — без Ctrl+Shift+R)
 // ============================================================
 async function registerSW() {
     if (!('serviceWorker' in navigator)) return;
-    try { await navigator.serviceWorker.register('./sw.js'); addLog('ok', 'SW'); }
-    catch (err) { addLog('warn', 'SW: ' + err.message); }
+    try {
+        const reg = await navigator.serviceWorker.register('./sw.js', {
+            updateViaCache: 'none'
+        });
+        // Проверяем обновления каждую минуту
+        setInterval(() => reg.update().catch(() => {}), 60_000);
+        // Слушаем нового SW — перезагружаем страницу
+        reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                    console.log('[MCscanner] New SW activated — reload');
+                    location.reload();
+                }
+            });
+        });
+        addLog('ok', 'SW registered');
+    } catch (err) {
+        addLog('warn', 'SW: ' + err.message);
+    }
 }
 async function clearAllCaches() {
     if (scanner) scanner.clearCache();
@@ -1837,7 +1857,7 @@ document.getElementById('installBtn').addEventListener('click', async () => {
 });
 
 // ============================================================
-//  CORNER PLAYER (клик → pop-звук)
+//  CORNER PLAYER
 // ============================================================
 document.querySelector('.corner-player')?.addEventListener('click', () => {
     try {
@@ -1969,7 +1989,7 @@ document.querySelectorAll('.view-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.view === viewMode);
 });
 
-addLog('ok', `${APP_NAME} v4.2`);
-console.log(`[${APP_NAME}] v4.2 started. TG: ${TG_LINK}. Owner UUID: ${OWNER_UUID}`);
+addLog('ok', `${APP_NAME} v4.3`);
+console.log(`[${APP_NAME}] v4.3 started. TG: ${TG_LINK}. Owner UUID: ${OWNER_UUID}`);
 
 loadServersFromJson();
