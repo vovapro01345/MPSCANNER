@@ -1,12 +1,14 @@
 // ============================================================
-//  MCscanner — by Real_Studio — v4.1
+//  MCscanner — by Real_Studio — v4.2
 //  Свой движок сканирования + cross-verification + Import JSON
+//  + Игрок в углу (UUID ab536313-1bed-468c-98d9-871c2f86b21d)
 // ============================================================
 
 const APP_NAME = 'MCscanner';
 const APP_AUTHOR = 'Real_Studio';
 const TG_LINK = 'https://t.me/Real_Studio_Game';
 const SERVERS_JSON_PATH = './servers.json';
+const OWNER_UUID = 'ab536313-1bed-468c-98d9-871c2f86b21d';
 
 const LS = {
     lastScan: 'mcscanner_last_scan',
@@ -173,7 +175,7 @@ const PROBES = [
     {
         id: 'mcsrvstat', name: 'mcsrvstat.us', role: 'primary',
         url: (h, p) => `https://api.mcsrvstat.us/3/${h}${p && p !== 25565 ? ':' + p : ''}`,
-        headers: { 'User-Agent': `${APP_NAME}/4.1 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/4.2 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false || d.online === undefined) return { online: false };
             return {
@@ -214,7 +216,7 @@ const PROBES = [
     {
         id: 'bedrock', name: 'mcsrvstat.us (bedrock)', role: 'bedrock',
         url: (h) => `https://api.mcsrvstat.us/bedrock/3/${h}:19132`,
-        headers: { 'User-Agent': `${APP_NAME}/4.1 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/4.2 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false) return { online: false };
             return {
@@ -686,7 +688,6 @@ function computeServersDiff(currentServers) {
 //  IMPORT JSON (drag-and-drop + file picker)
 // ============================================================
 function normalizeServer(s) {
-    // Приводим разные форматы к единому виду
     return {
         address: String(s.address || s.ip || s.host || '').trim(),
         port: Number(s.port) || 25565,
@@ -710,7 +711,6 @@ async function importJsonFile(file) {
         try { data = JSON.parse(text); }
         catch (e) { showToast(t('importError') + ': JSON parse'); return; }
 
-        // Поддержка: массив ИЛИ {servers:[...]} ИЛИ {_meta:{}, servers:[...]}
         let servers = null;
         let meta = null;
         if (Array.isArray(data)) servers = data;
@@ -724,18 +724,14 @@ async function importJsonFile(file) {
             return;
         }
 
-        // Нормализация
         const normalized = servers.map(normalizeServer).filter(s => s.address);
-
         if (normalized.length === 0) {
             showToast(t('importWrongFormat'));
             return;
         }
 
-        // Считаем диффы с прошлым списком
         const diff = computeServersDiff(normalized);
 
-        // Обновляем глобальное состояние
         allServers = normalized;
         serverResults = {};
         allServers.forEach(srv => {
@@ -743,15 +739,11 @@ async function importJsonFile(file) {
         });
         newServersSet = new Set(diff?.added || []);
         serverDiff = diff;
-
-        // Сбрасываем виртуальную пагинацию
         displayedCount = PAGE_SIZE;
 
-        // Обновляем UI
         renderServers();
         updateStats();
 
-        // Показываем тост
         if (meta) {
             addLog('ok', `Import: ${normalized.length} servers (meta: ${JSON.stringify(meta).slice(0, 100)})`);
         } else {
@@ -765,7 +757,6 @@ async function importJsonFile(file) {
 
         gtag('event', 'import_json', { count: normalized.length });
 
-        // Автоматически запускаем сканирование
         scanner = createScanner();
         startScan();
 
@@ -806,7 +797,6 @@ function setupDragAndDrop() {
         if (file) importJsonFile(file);
     });
 
-    // File picker
     document.getElementById('importBtn').addEventListener('click', () => {
         document.getElementById('fileInput').click();
     });
@@ -1737,7 +1727,6 @@ function buildExportData() {
     });
 }
 
-// Экспорт в формате, как отдаёт Rust-сканер (то, что он кидает в servers.json)
 function buildScannerFormat() {
     return allServers
         .filter(srv => serverResults[serverKey(srv)]?.online === true)
@@ -1845,6 +1834,24 @@ document.getElementById('installBtn').addEventListener('click', async () => {
     await deferredPrompt.userChoice;
     deferredPrompt = null;
     document.getElementById('installBtn').style.display = 'none';
+});
+
+// ============================================================
+//  CORNER PLAYER (клик → pop-звук)
+// ============================================================
+document.querySelector('.corner-player')?.addEventListener('click', () => {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.08);
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.03, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        osc.start(); osc.stop(ctx.currentTime + 0.15);
+        setTimeout(() => ctx.close(), 200);
+    } catch {}
 });
 
 // ============================================================
@@ -1962,7 +1969,7 @@ document.querySelectorAll('.view-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.view === viewMode);
 });
 
-addLog('ok', `${APP_NAME} v4.1`);
-console.log(`[${APP_NAME}] v4.1 started. TG: ${TG_LINK}`);
+addLog('ok', `${APP_NAME} v4.2`);
+console.log(`[${APP_NAME}] v4.2 started. TG: ${TG_LINK}. Owner UUID: ${OWNER_UUID}`);
 
 loadServersFromJson();
