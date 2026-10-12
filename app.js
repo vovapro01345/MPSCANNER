@@ -1824,4 +1824,145 @@ async function registerSW() {
     try { await navigator.serviceWorker.register('./sw.js'); addLog('ok', 'SW'); }
     catch (err) { addLog('warn', 'SW: ' + err.message); }
 }
-async function clearAllCaches()
+async function clearAllCaches() {
+    if (scanner) scanner.clearCache();
+    if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    showToast('🗑️ Cache cleared');
+}
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBtn').style.display = 'flex';
+});
+document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBtn').style.display = 'none';
+});
+
+// ============================================================
+//  EVENTS
+// ============================================================
+['searchInput','filterSelect','tagFilter','versionFilter','sortSelect','playersMin','playersMax'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const evt = (id === 'searchInput' || id === 'playersMin' || id === 'playersMax') ? 'input' : 'change';
+    el.addEventListener(evt, () => {
+        renderServers(true);
+        writeUrlParams();
+    });
+});
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        viewMode = btn.dataset.view;
+        localStorage.setItem(LS.view, viewMode);
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b === btn));
+        renderServers();
+        writeUrlParams();
+    });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', () => { scanner?.clearCache(); startScan(); });
+document.getElementById('stopBtn').addEventListener('click', () => {
+    if (scanner) { scanner.abort(); showToast('⏹'); }
+});
+document.getElementById('shareBtn').addEventListener('click', copyShareUrl);
+document.getElementById('copyOnlineBtn').addEventListener('click', copyOnlineList);
+document.getElementById('diffBtn').addEventListener('click', openDiffModal);
+document.getElementById('exportBtn').addEventListener('click', exportJson);
+document.getElementById('exportScannerBtn').addEventListener('click', exportScannerFormat);
+document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
+document.getElementById('compareBtn').addEventListener('click', openCompareModal);
+document.getElementById('logBtn').addEventListener('click', openLogModal);
+document.getElementById('probeStatsBtn').addEventListener('click', openProbeStatsModal);
+document.getElementById('clearCacheBtn').addEventListener('click', clearAllCaches);
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+document.getElementById('notifToggle').addEventListener('click', toggleNotifications);
+document.getElementById('helpBtn').addEventListener('click', openHelpModal);
+document.getElementById('langToggle').addEventListener('click', toggleLang);
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalBackdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modalBackdrop') closeModal();
+});
+document.getElementById('loadMoreBtn').addEventListener('click', () => {
+    displayedCount += PAGE_SIZE;
+    renderServers(false);
+});
+document.getElementById('renameModeBtn').addEventListener('click', (e) => {
+    renameMode = !renameMode;
+    e.currentTarget.classList.toggle('active', renameMode);
+    showToast(renameMode ? '✏️ on' : '✏️ off');
+});
+
+document.getElementById('accentBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('accentPicker').classList.toggle('show');
+});
+document.querySelectorAll('.accent-swatch').forEach(s => {
+    s.addEventListener('click', () => {
+        setAccent(s.dataset.color);
+        document.getElementById('accentPicker').classList.remove('show');
+    });
+});
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#accentPicker') && !e.target.closest('#accentBtn')) {
+        document.getElementById('accentPicker').classList.remove('show');
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+    if (e.key === 'Escape') {
+        if (document.getElementById('modalBackdrop').classList.contains('show')) closeModal();
+        else if (inInput) document.activeElement.blur();
+        return;
+    }
+    if (inInput) return;
+    switch (e.key.toLowerCase()) {
+        case '/': e.preventDefault(); document.getElementById('searchInput').focus(); break;
+        case 'r': scanner?.clearCache(); startScan(); break;
+        case 't': toggleTheme(); break;
+        case 'e': exportJson(); break;
+        case 'c': exportCsv(); break;
+        case 'h': openHistoryModal(); break;
+        case 'l': openLogModal(); break;
+        case 'p': openProbeStatsModal(); break;
+        case 'd': openDiffModal(); break;
+        case 'i': document.getElementById('fileInput').click(); break;
+        case '?': openHelpModal(); break;
+    }
+});
+
+// ============================================================
+//  INIT
+// ============================================================
+document.getElementById('year').textContent = new Date().getFullYear();
+applyTheme();
+applyAccent();
+applyLang();
+updateNotifBtn();
+registerSW();
+readUrlParams();
+setupDragAndDrop();
+
+document.querySelectorAll('.view-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === viewMode);
+});
+
+addLog('ok', `${APP_NAME} v4.1`);
+console.log(`[${APP_NAME}] v4.1 started. TG: ${TG_LINK}`);
+
+loadServersFromJson();
