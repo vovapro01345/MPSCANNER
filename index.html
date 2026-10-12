@@ -3,15 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft Server Monitor</title>
+    <title>MCscanner — by Real_Studio</title>
+    <meta name="description" content="MCscanner — сканер Minecraft-серверов от Real_Studio. Еженедельное сканирование по выходным.">
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛏</text></svg>">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>⛏ Minecraft Server Monitor</h1>
-            <p>Автоматическая проверка статуса серверов через публичные API</p>
+            <h1>⛏ MCscanner</h1>
+            <p class="subtitle">
+                Сканер Minecraft-серверов · <span class="brand">Real_Studio</span>
+            </p>
+            <div class="scan-info">
+                📅 Сканирование выполняется <b>каждую неделю в течение выходных</b> (сб–вс).
+                Все данные о названиях, MOTD, версиях и игроках подтягиваются через публичные API в реальном времени.
+            </div>
         </header>
 
         <div class="error-banner" id="errorBanner"></div>
@@ -50,7 +57,10 @@
         </div>
 
         <footer class="footer">
-            <span id="lastUpdate">—</span>
+            <div class="footer-line">
+                <b>MCscanner</b> © <span id="year"></span> — создан <span class="brand">Real_Studio</span>
+            </div>
+            <div class="footer-line" id="lastUpdate">—</div>
         </footer>
     </div>
 
