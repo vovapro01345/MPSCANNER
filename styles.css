@@ -34,6 +34,49 @@ body {
     transition: background 0.3s, color 0.3s;
 }
 
+/* Игрок в углу */
+.corner-player {
+    position: fixed;
+    bottom: 0;
+    right: 24px;
+    z-index: 99;
+    text-decoration: none;
+    pointer-events: auto;
+    filter: drop-shadow(0 0 16px rgba(110, 231, 183, 0.35));
+    animation: corner-idle 3.2s ease-in-out infinite;
+    transform-origin: bottom center;
+}
+.corner-player img {
+    width: 110px;
+    height: auto;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+}
+.corner-player-shadow {
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 8px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5), transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.corner-player:hover {
+    filter: drop-shadow(0 0 22px rgba(110, 231, 183, 0.7));
+}
+@keyframes corner-idle {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25%      { transform: translateY(-2px) rotate(-1deg); }
+    50%      { transform: translateY(-5px) rotate(0deg); }
+    75%      { transform: translateY(-2px) rotate(1deg); }
+}
+
 /* Drop overlay */
 .drop-overlay {
     position: fixed; inset: 0;
@@ -514,4 +557,7 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     .ip-group-body { grid-template-columns: 1fr; }
     .drop-icon { font-size: 3rem; }
     .drop-title { font-size: 1.2rem; }
+    .corner-player { right: 10px; }
+    .corner-player img { width: 70px; }
+    .corner-player-shadow { width: 42px; }
 }
