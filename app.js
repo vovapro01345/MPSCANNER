@@ -1,6 +1,6 @@
 // ============================================================
-//  MCscanner — by Real_Studio — v4.0
-//  Свой движок сканирования + cross-verification + Geo + i18n
+//  MCscanner — by Real_Studio — v4.1
+//  Свой движок сканирования + cross-verification + Import JSON
 // ============================================================
 
 const APP_NAME = 'MCscanner';
@@ -19,7 +19,6 @@ const LS = {
     history: 'mcscanner_history',
     notif: 'mcscanner_notif',
     logs: 'mcscanner_logs',
-    geo: 'mcscanner_geo',
     view: 'mcscanner_view',
     lastServerList: 'mcscanner_last_servers_list',
     expandedIPs: 'mcscanner_expanded_ips',
@@ -57,7 +56,7 @@ const I18N = {
         filterAll: 'Все серверы', filterOnline: 'Только онлайн', filterOffline: 'Только офлайн',
         filterFav: '⭐ Избранные', filterIcon: '🖼️ С иконкой', filterPlayers: '👥 С игроками',
         filterDiscord: '💬 С Discord', filterConf: '🎯 С высокой уверенностью', filterConflict: '⚠️ Спорные',
-        tagAny: '🏷️ Любой тег', verAny: '🌐 Любая версия', countryAny: '🌍 Любая страна',
+        tagAny: '🏷️ Любой тег', verAny: '🌐 Любая версия',
         sortStatus: 'Сортировка: по статусу', sortConf: '🎯 По уверенности', sortUptime: '📈 По uptime',
         sortFill: '🔥 По заполненности', sortPlayersDesc: 'Игроков: больше → меньше',
         sortPlayersAsc: 'Игроков: меньше → больше', sortNameAsc: 'Название: A → Z',
@@ -65,30 +64,31 @@ const I18N = {
         btnRefresh: '🔄 Обновить всё', btnStop: '⏹ Стоп', btnShare: '🔗 Поделиться',
         btnCopyOnline: '📋 Онлайн', btnDiff: '🔀 Дифф', btnRename: '✏️ Имена',
         btnJson: '💾 JSON', btnCsv: '📊 CSV', btnHistory: '📜 История', btnCompare: '🔀 Сравнить',
-        btnLog: '📋 Лог', btnProbes: '📡 Пробы', btnGeo: '🌍 Гео', btnCache: '🗑️ Кэш',
+        btnLog: '📋 Лог', btnProbes: '📡 Пробы', btnCache: '🗑️ Кэш',
         statTotal: 'Всего', statOnline: 'Онлайн', statOffline: 'Офлайн',
         statPlayers: 'Игроков', statConf: 'Ср. уверенность', statDead: 'Мёртвых IP',
         loading: 'Загрузка серверов...', loadMore: '⬇️ Показать ещё', createdBy: 'создан',
-        newBadge: '🆕 новый', deadBadge: '💀 мёртвый IP', liveOnline: 'Онлайн', liveOffline: 'Офлайн',
-        liveChecking: 'Скан', wasOnline: '📅 Был онлайн:',
+        newBadge: '🆕 новый', deadBadge: '💀 мёртвый IP',
+        liveOnline: 'Онлайн', liveOffline: 'Офлайн', liveChecking: 'Скан',
+        wasOnline: '📅 Был онлайн:',
         uptime: 'Uptime:', uptimeScans: 'из', scansWord: 'сканов',
-        playersWord: 'Игроков', versionWord: 'Версия', motdWord: 'MOTD', statusWord: 'Статус',
+        playersWord: 'Игроков', versionWord: 'Версия', statusWord: 'Статус',
         addressWord: 'Адрес', nameWord: 'Название', uptimeWord: 'Uptime', iconWord: 'Иконка',
-        refresh: 'Обновить', byCountry: 'Страна', byHost: 'Хостинг',
         diffTitle: '🔀 Диффы между загрузками', diffAdded: '➕ Новых', diffRemoved: '➖ Пропало',
         diffSame: '✅ Общих', diffEmpty: 'Нет данных для сравнения (это первая загрузка)',
         diffNoChange: 'Никаких изменений с прошлой загрузки',
-        geoTitle: '🌍 Геолокация IP', geoLoading: 'Загружаю гео для', geoHosts: 'хостов...',
-        geoEmpty: 'Нет данных. Нажмите «Гео» ещё раз или обновите',
         copyOnlineEmpty: '❌ Нет онлайн серверов',
         copyOnlineDone: '📋 Скопировано:',
-        helpShortcuts: 'Горячие клавиши', helpFromFile: 'Горячие клавиши',
         historyEmpty: 'История пуста', logEmpty: 'Лог пуст',
         compareEmpty: 'Нужно минимум 2 сканирования',
         anomaliesTitle: '⚠️ Аномальные сервера',
         anomaliesEmpty: 'Аномалий не найдено 🎉',
         deadIPsTitle: '💀 Мёртвые IP',
-        deadIPsEmpty: 'Мёртвых IP не обнаружено'
+        deadIPsEmpty: 'Мёртвых IP не обнаружено',
+        importDone: '✅ Импортировано',
+        importError: '❌ Ошибка импорта',
+        importWrongFormat: '❌ Файл должен содержать массив серверов',
+        exportScanner: '💾 Для сканера'
     },
     en: {
         subtitle: 'Custom Minecraft server scanner',
@@ -104,7 +104,7 @@ const I18N = {
         filterAll: 'All servers', filterOnline: 'Online only', filterOffline: 'Offline only',
         filterFav: '⭐ Favorites', filterIcon: '🖼️ With icon', filterPlayers: '👥 With players',
         filterDiscord: '💬 With Discord', filterConf: '🎯 High confidence', filterConflict: '⚠️ Conflicts',
-        tagAny: '🏷️ Any tag', verAny: '🌐 Any version', countryAny: '🌍 Any country',
+        tagAny: '🏷️ Any tag', verAny: '🌐 Any version',
         sortStatus: 'Sort: by status', sortConf: '🎯 By confidence', sortUptime: '📈 By uptime',
         sortFill: '🔥 By fill', sortPlayersDesc: 'Players: high → low',
         sortPlayersAsc: 'Players: low → high', sortNameAsc: 'Name: A → Z',
@@ -112,30 +112,31 @@ const I18N = {
         btnRefresh: '🔄 Refresh all', btnStop: '⏹ Stop', btnShare: '🔗 Share',
         btnCopyOnline: '📋 Online', btnDiff: '🔀 Diff', btnRename: '✏️ Rename',
         btnJson: '💾 JSON', btnCsv: '📊 CSV', btnHistory: '📜 History', btnCompare: '🔀 Compare',
-        btnLog: '📋 Log', btnProbes: '📡 Probes', btnGeo: '🌍 Geo', btnCache: '🗑️ Cache',
+        btnLog: '📋 Log', btnProbes: '📡 Probes', btnCache: '🗑️ Cache',
         statTotal: 'Total', statOnline: 'Online', statOffline: 'Offline',
         statPlayers: 'Players', statConf: 'Avg confidence', statDead: 'Dead IPs',
         loading: 'Loading servers...', loadMore: '⬇️ Show more', createdBy: 'created by',
-        newBadge: '🆕 new', deadBadge: '💀 dead IP', liveOnline: 'Online', liveOffline: 'Offline',
-        liveChecking: 'Scan', wasOnline: '📅 Was online:',
+        newBadge: '🆕 new', deadBadge: '💀 dead IP',
+        liveOnline: 'Online', liveOffline: 'Offline', liveChecking: 'Scan',
+        wasOnline: '📅 Was online:',
         uptime: 'Uptime:', uptimeScans: 'of', scansWord: 'scans',
-        playersWord: 'Players', versionWord: 'Version', motdWord: 'MOTD', statusWord: 'Status',
+        playersWord: 'Players', versionWord: 'Version', statusWord: 'Status',
         addressWord: 'Address', nameWord: 'Name', uptimeWord: 'Uptime', iconWord: 'Icon',
-        refresh: 'Refresh', byCountry: 'Country', byHost: 'Host',
         diffTitle: '🔀 Diff between loads', diffAdded: '➕ Added', diffRemoved: '➖ Removed',
         diffSame: '✅ Same', diffEmpty: 'No data to compare (first load)',
         diffNoChange: 'No changes since last load',
-        geoTitle: '🌍 IP Geolocation', geoLoading: 'Loading geo for', geoHosts: 'hosts...',
-        geoEmpty: 'No data. Click «Geo» again or refresh',
         copyOnlineEmpty: '❌ No online servers',
         copyOnlineDone: '📋 Copied:',
-        helpShortcuts: 'Hotkeys', helpFromFile: 'Hotkeys',
         historyEmpty: 'History is empty', logEmpty: 'Log is empty',
         compareEmpty: 'At least 2 scans required',
         anomaliesTitle: '⚠️ Anomalous servers',
         anomaliesEmpty: 'No anomalies found 🎉',
         deadIPsTitle: '💀 Dead IPs',
-        deadIPsEmpty: 'No dead IPs detected'
+        deadIPsEmpty: 'No dead IPs detected',
+        importDone: '✅ Imported',
+        importError: '❌ Import error',
+        importWrongFormat: '❌ File must contain an array of servers',
+        exportScanner: '💾 For scanner'
     }
 };
 
@@ -172,7 +173,7 @@ const PROBES = [
     {
         id: 'mcsrvstat', name: 'mcsrvstat.us', role: 'primary',
         url: (h, p) => `https://api.mcsrvstat.us/3/${h}${p && p !== 25565 ? ':' + p : ''}`,
-        headers: { 'User-Agent': `${APP_NAME}/4.0 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/4.1 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false || d.online === undefined) return { online: false };
             return {
@@ -213,7 +214,7 @@ const PROBES = [
     {
         id: 'bedrock', name: 'mcsrvstat.us (bedrock)', role: 'bedrock',
         url: (h) => `https://api.mcsrvstat.us/bedrock/3/${h}:19132`,
-        headers: { 'User-Agent': `${APP_NAME}/4.0 (by ${APP_AUTHOR})` },
+        headers: { 'User-Agent': `${APP_NAME}/4.1 (by ${APP_AUTHOR})` },
         parse: (d) => {
             if (!d || d.online === false) return { online: false };
             return {
@@ -237,7 +238,6 @@ class ServerScanner {
         this.events = {};
         this.aborted = false;
         this.running = false;
-        this.deadIPs = new Set(lsGet(LS.deadIPs, []));
         PROBES.forEach(p => this.probeStats.set(p.id, { ok: 0, fail: 0, totalMs: 0 }));
     }
     on(evt, cb) { (this.events[evt] ||= []).push(cb); return this; }
@@ -422,7 +422,6 @@ let viewMode = localStorage.getItem(LS.view) || 'grid';
 let currentPreset = 'all';
 let newServersSet = new Set();
 let serverDiff = null;
-let geoCache = lsGet(LS.geo, {});
 let expandedIPs = new Set(lsGet(LS.expandedIPs, []));
 
 // ============================================================
@@ -502,12 +501,12 @@ function notifEnabled() { return lsGet(LS.notif, false) === true; }
 async function toggleNotifications() {
     if (notifEnabled()) {
         lsSet(LS.notif, false);
-        showToast('🔔 ' + (currentLang === 'ru' ? 'Уведомления выключены' : 'Notifications off'));
+        showToast('🔔 off');
         updateNotifBtn(); return;
     }
     if (!('Notification' in window)) return;
     const perm = await Notification.requestPermission();
-    if (perm === 'granted') { lsSet(LS.notif, true); showToast('🔔 On'); }
+    if (perm === 'granted') { lsSet(LS.notif, true); showToast('🔔 on'); }
     updateNotifBtn();
 }
 function updateNotifBtn() {
@@ -630,7 +629,6 @@ function getUptime(key) {
     return total > 0 ? { percent: Math.round((online / total) * 100), online, total } : null;
 }
 
-// ---- Sparkline ----
 function sparkline(key) {
     const h = getHistory().slice(0, 20).reverse();
     if (h.length < 2) return '';
@@ -646,12 +644,11 @@ function sparkline(key) {
         const y = hh - 2 - p * (hh - 4);
         path += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
     });
-    return `<svg class="sparkline" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}" aria-hidden="true">
+    return `<svg class="sparkline" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">
         <path d="${path}" stroke="var(--accent)" stroke-width="1.5" fill="none"/>
     </svg>`;
 }
 
-// ---- Dead IPs ----
 function computeDeadIPs() {
     const byIP = {};
     allServers.forEach(srv => {
@@ -667,11 +664,9 @@ function computeDeadIPs() {
     return { byIP, dead };
 }
 function getDeadIPsCount() {
-    const { dead } = computeDeadIPs();
-    return dead.size;
+    return computeDeadIPs().dead.size;
 }
 
-// ---- Diff ----
 function computeServersDiff(currentServers) {
     const prev = lsGet(LS.lastServerList, null);
     const cur = currentServers.map(s => `${s.address}:${s.port}`);
@@ -687,38 +682,139 @@ function computeServersDiff(currentServers) {
     return prev ? result : null;
 }
 
-// ---- Geo ----
-async function fetchGeoForIPs(ips) {
-    const result = { ...geoCache };
-    const toFetch = ips.filter(ip => !result[ip]);
-    if (toFetch.length === 0) return result;
-
-    for (const ip of toFetch) {
-        try {
-            const res = await fetch(`https://ipwho.is/${ip}`);
-            if (!res.ok) { result[ip] = { error: true }; continue; }
-            const d = await res.json();
-            if (d.success) {
-                result[ip] = {
-                    country: d.country || '',
-                    countryCode: d.country_code || '',
-                    city: d.city || '',
-                    isp: d.connection?.isp || d.connection?.org || ''
-                };
-            } else {
-                result[ip] = { error: true };
-            }
-        } catch { result[ip] = { error: true }; }
-        await new Promise(r => setTimeout(r, 1100)); // rate limit ipwho.is
-    }
-    geoCache = result;
-    lsSet(LS.geo, result);
-    return result;
+// ============================================================
+//  IMPORT JSON (drag-and-drop + file picker)
+// ============================================================
+function normalizeServer(s) {
+    // Приводим разные форматы к единому виду
+    return {
+        address: String(s.address || s.ip || s.host || '').trim(),
+        port: Number(s.port) || 25565,
+        online: s.online ?? null,
+        motd: s.motd || '',
+        players_online: s.players_online ?? s.players ?? 0,
+        players_max: s.players_max ?? s.max_players ?? s.maxPlayers ?? 20,
+        version: s.version || '—'
+    };
 }
 
-function countryFlag(code) {
-    if (!code || code.length !== 2) return '';
-    return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+async function importJsonFile(file) {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('❌ Файл слишком большой (>10 МБ)');
+        return;
+    }
+    try {
+        const text = await file.text();
+        let data;
+        try { data = JSON.parse(text); }
+        catch (e) { showToast(t('importError') + ': JSON parse'); return; }
+
+        // Поддержка: массив ИЛИ {servers:[...]} ИЛИ {_meta:{}, servers:[...]}
+        let servers = null;
+        let meta = null;
+        if (Array.isArray(data)) servers = data;
+        else if (data && Array.isArray(data.servers)) {
+            servers = data.servers;
+            meta = data._meta || null;
+        }
+
+        if (!servers || servers.length === 0) {
+            showToast(t('importWrongFormat'));
+            return;
+        }
+
+        // Нормализация
+        const normalized = servers.map(normalizeServer).filter(s => s.address);
+
+        if (normalized.length === 0) {
+            showToast(t('importWrongFormat'));
+            return;
+        }
+
+        // Считаем диффы с прошлым списком
+        const diff = computeServersDiff(normalized);
+
+        // Обновляем глобальное состояние
+        allServers = normalized;
+        serverResults = {};
+        allServers.forEach(srv => {
+            serverResults[serverKey(srv)] = { _scanning: true, online: null };
+        });
+        newServersSet = new Set(diff?.added || []);
+        serverDiff = diff;
+
+        // Сбрасываем виртуальную пагинацию
+        displayedCount = PAGE_SIZE;
+
+        // Обновляем UI
+        renderServers();
+        updateStats();
+
+        // Показываем тост
+        if (meta) {
+            addLog('ok', `Import: ${normalized.length} servers (meta: ${JSON.stringify(meta).slice(0, 100)})`);
+        } else {
+            addLog('ok', `Import: ${normalized.length} servers`);
+        }
+        showToast(`${t('importDone')}: ${normalized.length}`);
+
+        if (diff && (diff.added.length > 0 || diff.removed.length > 0)) {
+            setTimeout(() => showToast(`🔀 +${diff.added.length} / -${diff.removed.length}`), 600);
+        }
+
+        gtag('event', 'import_json', { count: normalized.length });
+
+        // Автоматически запускаем сканирование
+        scanner = createScanner();
+        startScan();
+
+    } catch (err) {
+        addLog('err', 'Import: ' + err.message);
+        showToast(t('importError') + ': ' + err.message);
+    }
+}
+
+function setupDragAndDrop() {
+    const overlay = document.getElementById('dropOverlay');
+    let dragCounter = 0;
+
+    window.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dragCounter++;
+        if (e.dataTransfer.types.includes('Files')) {
+            overlay.classList.add('show');
+        }
+    });
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    });
+    window.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            overlay.classList.remove('show');
+        }
+    });
+    window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dragCounter = 0;
+        overlay.classList.remove('show');
+        const file = e.dataTransfer.files?.[0];
+        if (file) importJsonFile(file);
+    });
+
+    // File picker
+    document.getElementById('importBtn').addEventListener('click', () => {
+        document.getElementById('fileInput').click();
+    });
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (file) importJsonFile(file);
+        e.target.value = '';
+    });
 }
 
 // ============================================================
@@ -735,7 +831,6 @@ function readUrlParams() {
     set('tagFilter', p.get('tag'));
     set('versionFilter', p.get('ver'));
     set('sortSelect', p.get('sort'));
-    set('countryFilter', p.get('country'));
     if (p.get('pmin')) set('playersMin', p.get('pmin'));
     if (p.get('pmax')) set('playersMax', p.get('pmax'));
     if (p.get('view')) { viewMode = p.get('view'); }
@@ -748,11 +843,9 @@ function writeUrlParams() {
     if (v('tagFilter')) p.set('tag', v('tagFilter'));
     if (v('versionFilter')) p.set('ver', v('versionFilter'));
     if (v('sortSelect') && v('sortSelect') !== 'status') p.set('sort', v('sortSelect'));
-    if (v('countryFilter')) p.set('country', v('countryFilter'));
     if (v('playersMin') && v('playersMin') !== '0') p.set('pmin', v('playersMin'));
     if (v('playersMax') && v('playersMax') !== '10000') p.set('pmax', v('playersMax'));
     if (viewMode !== 'grid') p.set('view', viewMode);
-
     const newUrl = p.toString() ? `?${p}` : location.pathname;
     history.replaceState(null, '', newUrl);
 }
@@ -818,13 +911,13 @@ function resetMetrics() {
 function updateProgress(cur, total, name) {
     const c = document.getElementById('progressContainer');
     const f = document.getElementById('progressBarFill');
-    const t = document.getElementById('progressText');
+    const tEl = document.getElementById('progressText');
     const n = document.getElementById('progressCurrent');
     if (!c) return;
     if (cur === 0) { c.style.display = 'none'; return; }
     c.style.display = 'block';
     f.style.width = Math.round((cur / total) * 100) + '%';
-    t.textContent = `${cur} / ${total}`;
+    tEl.textContent = `${cur} / ${total}`;
     if (n && name) n.textContent = '→ ' + name;
 }
 function updateScannerPanel() {
@@ -849,15 +942,20 @@ async function loadServersFromJson() {
         const response = await fetch(SERVERS_JSON_PATH, { cache: 'no-cache' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
-        if (!Array.isArray(data)) throw new Error('JSON must be array');
 
-        allServers = data;
+        let servers;
+        if (Array.isArray(data)) servers = data;
+        else if (data && Array.isArray(data.servers)) servers = data.servers;
+        else throw new Error('JSON must be array or {servers:[]}');
+
+        const normalized = servers.map(normalizeServer).filter(s => s.address);
+
+        allServers = normalized;
         serverResults = {};
         allServers.forEach(srv => {
             serverResults[serverKey(srv)] = { _scanning: true, online: null };
         });
 
-        // Diff
         serverDiff = computeServersDiff(allServers);
         newServersSet = new Set(serverDiff?.added || []);
 
@@ -865,18 +963,16 @@ async function loadServersFromJson() {
         renderServers();
         updateStats();
 
-        // Если есть diff — показать тост
-        if (serverDiff && (serverDiff.added.length > 0 || serverDiff.removed.length > 0)) {
-            showToast(`🔀 +${serverDiff.added.length} / -${serverDiff.removed.length}`);
-        }
-
         scanner = createScanner();
         startScan();
     } catch (err) {
         addLog('err', 'load: ' + err.message);
-        showError(`Error loading servers.json: ${err.message}`);
+        showError(`Error loading servers.json: ${err.message}. Перетащите файл в окно браузера.`);
         document.getElementById('serverGrid').innerHTML = `
-            <div class="empty-state">❌ ${escapeHtml(err.message)}</div>`;
+            <div class="empty-state">
+                ❌ <code>servers.json</code> не найден или битый.<br><br>
+                Просто перетащите файл <code>servers.json</code> в окно браузера — он загрузится автоматически.
+            </div>`;
     }
 }
 
@@ -936,7 +1032,6 @@ function getFilteredAndSorted() {
     const filter = document.getElementById('filterSelect').value;
     const tagFilter = document.getElementById('tagFilter').value;
     const verFilter = document.getElementById('versionFilter').value;
-    const countryFilter = document.getElementById('countryFilter').value;
     const sort = document.getElementById('sortSelect').value;
     const pMin = Number(document.getElementById('playersMin').value) || 0;
     const pMax = Number(document.getElementById('playersMax').value) || 10000;
@@ -956,16 +1051,9 @@ function getFilteredAndSorted() {
         if (filter === 'confident' && !(r.confidence >= 90 && r.verified)) return false;
         if (filter === 'conflicts' && !r.conflict) return false;
 
-        // Player range
         if (online) {
             const pl = r.players ?? 0;
             if (pl < pMin || pl > pMax) return false;
-        }
-
-        // Geo country
-        if (countryFilter) {
-            const geo = geoCache[srv.address];
-            if (!geo || geo.countryCode !== countryFilter) return false;
         }
 
         if (tagFilter) {
@@ -1049,13 +1137,9 @@ function renderServers(resetPagination = true) {
         return;
     }
 
-    if (viewMode === 'table') {
-        renderTable(visible);
-    } else if (viewMode === 'grouped') {
-        renderGrouped(visible);
-    } else {
-        renderGrid(visible);
-    }
+    if (viewMode === 'table') renderTable(visible);
+    else if (viewMode === 'grouped') renderGrouped(visible);
+    else renderGrid(visible);
 
     const wrap = document.getElementById('loadMoreWrap');
     if (currentFiltered.length > displayedCount) {
@@ -1084,22 +1168,16 @@ function renderGrouped(servers) {
     const { dead, byIP } = computeDeadIPs();
 
     let html = '';
-    Object.entries(groups).sort((a, b) => {
-        const [ipA] = a, [ipB] = b;
-        return ipA.localeCompare(ipB, undefined, { numeric: true });
-    }).forEach(([ip, list]) => {
+    Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true })).forEach(([ip, list]) => {
         const stats = byIP[ip] || { total: list.length, online: 0 };
         const isDead = dead.has(ip);
         const expanded = expandedIPs.has(ip);
-        const geo = geoCache[ip];
-        const flag = geo && !geo.error ? countryFlag(geo.countryCode) : '';
-        const geoText = geo && !geo.error ? ` ${flag} ${geo.city || geo.country || ''}` : '';
 
         html += `
             <div class="ip-group ${expanded ? 'expanded' : ''}" data-ip="${escapeHtml(ip)}">
                 <div class="ip-group-header">
                     <span class="ip-group-arrow">▶</span>
-                    <span class="ip-group-ip">${escapeHtml(ip)}${geoText ? `<span style="color:var(--text-mute);font-weight:400;font-size:0.8rem;">${escapeHtml(geoText)}</span>` : ''}</span>
+                    <span class="ip-group-ip">${escapeHtml(ip)}</span>
                     <div class="ip-group-stats">
                         <span>📦 ${stats.total}</span>
                         <span class="ok">✅ ${stats.online}</span>
@@ -1115,7 +1193,6 @@ function renderGrouped(servers) {
     });
     grid.innerHTML = html;
 
-    // Toggle expand
     grid.querySelectorAll('.ip-group-header').forEach(h => {
         h.addEventListener('click', () => {
             const g = h.parentElement;
@@ -1157,7 +1234,6 @@ function tableRowHtml(srv) {
     const r = serverResults[key] || {};
     const scanning = r.online == null || r._scanning;
     const online = r.online === true;
-    const offline = r.online === false;
     const status = scanning ? 'checking' : (online ? 'online' : 'offline');
     const statusText = { online: t('liveOnline'), offline: t('liveOffline'), checking: t('liveChecking') }[status];
     const fav = isFavorite(key);
@@ -1167,8 +1243,6 @@ function tableRowHtml(srv) {
     const version = r.version || srv.version || '—';
     const uptime = getUptime(key);
     const uptimeText = uptime ? `${uptime.percent}% (${uptime.online}/${uptime.total})` : '—';
-    const geo = geoCache[srv.address];
-    const flag = geo && !geo.error ? countryFlag(geo.countryCode) : '';
 
     let iconHtml = '⛏';
     if (online && r.icon) {
@@ -1180,7 +1254,7 @@ function tableRowHtml(srv) {
     return `
         <tr data-key="${escapeHtml(key)}" class="row-${status}">
             <td>${iconHtml}</td>
-            <td class="tbl-addr">${flag ? flag + ' ' : ''}${escapeHtml(srv.address)}:${srv.port}</td>
+            <td class="tbl-addr">${escapeHtml(srv.address)}:${srv.port}</td>
             <td><span class="tbl-badge ${status}">${statusText}</span></td>
             <td class="tbl-players">${escapeHtml(String(players))} / ${escapeHtml(String(maxPlayers))}</td>
             <td>${escapeHtml(String(version))}</td>
@@ -1201,13 +1275,9 @@ function bindTableRowEvents(row) {
             const nowFav = toggleFavorite(key);
             favCell.textContent = nowFav ? '★' : '☆';
             favCell.style.color = nowFav ? '#fbbf24' : 'var(--text-mute)';
-            showToast(nowFav ? '⭐' : '☆');
             return;
         }
-        const srv = allServers.find(s => serverKey(s) === key);
-        if (srv) {
-            navigator.clipboard.writeText(key).then(() => showToast('📋 ' + key)).catch(() => {});
-        }
+        navigator.clipboard.writeText(key).then(() => showToast('📋 ' + key)).catch(() => {});
     });
 }
 
@@ -1280,12 +1350,11 @@ function cardHtml(srv) {
         tagsHtml = `<div class="tags">${els.join('')}</div>`;
     }
 
-    // Uptime
     const uptime = getUptime(key);
     let uptimeHtml = '';
     if (uptime) {
         uptimeHtml = `
-            <div class="uptime-row" title="${uptime.online} ${t('uptimeScans')} ${uptime.total} ${t('scansWord')}">
+            <div class="uptime-row">
                 <span>${t('uptime')} ${uptime.percent}%</span>
                 <div class="bar-wrap"><div class="bar-fill" style="width:${uptime.percent}%"></div></div>
                 ${sparkline(key)}
@@ -1301,13 +1370,9 @@ function cardHtml(srv) {
     const hasPlayerList = online && Array.isArray(r.playerList) && r.playerList.length > 0;
     const pcClass = hasPlayerList ? 'player-count clickable' : 'player-count';
 
-    // Geo flag
-    const geo = geoCache[srv.address];
-    const geoFlag = geo && !geo.error ? `<span class="geo-flag" title="${escapeHtml((geo.city || '') + (geo.country ? ', ' + geo.country : '') + (geo.isp ? ' · ' + geo.isp : ''))}">${countryFlag(geo.countryCode)}</span>` : '';
-
     return `
         <div class="server-card ${status}${conflictClass}${isNew}${deadClass} ${fav ? 'is-favorite' : ''}" data-key="${escapeHtml(key)}">
-            <button class="fav-btn ${fav ? 'active' : ''}" data-fav="${escapeHtml(key)}" title="Fav">${fav ? '★' : '☆'}</button>
+            <button class="fav-btn ${fav ? 'active' : ''}" data-fav="${escapeHtml(key)}">${fav ? '★' : '☆'}</button>
             <div class="card-main">
                 <div class="server-icon">${iconHtml}</div>
                 <div class="card-content">
@@ -1322,7 +1387,7 @@ function cardHtml(srv) {
                         </div>
                     </div>
                     <div class="server-address" data-address="${escapeHtml(key)}" title="Click to copy, Shift+click for QR">
-                        ${geoFlag}${escapeHtml(srv.address)}:${srv.port}
+                        ${escapeHtml(srv.address)}:${srv.port}
                         <span class="copy-hint">📋</span>
                     </div>
                     <div class="server-motd">${escapeHtml(motdText)}</div>
@@ -1334,7 +1399,7 @@ function cardHtml(srv) {
                             👥 <span class="count">${escapeHtml(String(players))}</span> / ${escapeHtml(String(maxPlayers))}
                             ${playerBar}
                         </div>
-                        <div class="version-tag" title="${escapeHtml(String(version))}">${escapeHtml(String(version))}</div>
+                        <div class="version-tag">${escapeHtml(String(version))}</div>
                     </div>
                     ${confHtml}
                 </div>
@@ -1352,7 +1417,6 @@ function bindSingleCardEvents(card) {
         favBtn.classList.toggle('active', nowFav);
         favBtn.textContent = nowFav ? '★' : '☆';
         card.classList.toggle('is-favorite', nowFav);
-        showToast(nowFav ? '⭐' : '☆');
     });
 
     const addr = card.querySelector('.server-address');
@@ -1396,49 +1460,31 @@ function bindCardEvents(container) {
 // ============================================================
 //  PRESETS
 // ============================================================
+let showOnlyNew = false;
 function applyPreset(name) {
     currentPreset = name;
     document.querySelectorAll('.preset-btn').forEach(b => {
         b.classList.toggle('active', b.dataset.preset === name);
     });
-
     const $ = (id) => document.getElementById(id);
-    // Reset
     $('filterSelect').value = 'all';
     $('tagFilter').value = '';
     $('versionFilter').value = '';
-    $('countryFilter').value = '';
     $('playersMin').value = '0';
     $('playersMax').value = '10000';
     $('searchInput').value = '';
 
     switch (name) {
-        case 'online-players':
-            $('filterSelect').value = 'has-players';
-            break;
-        case 'new':
-            $('filterSelect').value = 'all';
-            // Показывать только новые — через специальный фильтр ниже
-            showOnlyNew = true;
-            break;
-        case 'anomalies':
-            openAnomaliesModal();
-            $('filterSelect').value = 'all';
-            break;
-        case 'dead-ips':
-            openDeadIPsModal();
-            $('filterSelect').value = 'all';
-            break;
-        case 'favorites':
-            $('filterSelect').value = 'favorites';
-            break;
+        case 'online-players': $('filterSelect').value = 'has-players'; break;
+        case 'new': showOnlyNew = true; break;
+        case 'anomalies': openAnomaliesModal(); break;
+        case 'dead-ips': openDeadIPsModal(); break;
+        case 'favorites': $('filterSelect').value = 'favorites'; break;
     }
     showOnlyNew = (name === 'new');
     renderServers();
     writeUrlParams();
 }
-
-let showOnlyNew = false;
 
 // ============================================================
 //  MODALS
@@ -1561,66 +1607,6 @@ function openProbeStatsModal() {
     openModal('📡 ' + t('btnProbes'), html);
 }
 
-function openGeoModal() {
-    const ips = [...new Set(allServers.map(s => s.address))];
-    const hasData = ips.filter(ip => geoCache[ip] && !geoCache[ip].error).length;
-    let html = `<div style="margin-bottom:12px;color:var(--text-dim);font-size:0.85rem;">
-        ${hasData} / ${ips.length} ${t('geoHosts')}</div>`;
-    ips.sort().forEach(ip => {
-        const g = geoCache[ip];
-        if (g && !g.error) {
-            const flag = countryFlag(g.countryCode);
-            html += `<div class="geo-row">
-                <span class="ip">${escapeHtml(ip)}</span>
-                <span>${flag} ${escapeHtml(g.country)}</span>
-                <span style="color:var(--text-mute);">${escapeHtml(g.city || '')}</span>
-                <span style="margin-left:auto;color:var(--text-dim);font-size:0.75rem;">${escapeHtml(g.isp || '')}</span>
-            </div>`;
-        } else if (g && g.error) {
-            html += `<div class="geo-row"><span class="ip">${escapeHtml(ip)}</span><span style="color:var(--text-mute);">—</span></div>`;
-        } else {
-            html += `<div class="geo-row"><span class="ip">${escapeHtml(ip)}</span><span style="color:var(--text-mute);">—</span></div>`;
-        }
-    });
-    openModal('🌍 ' + t('geoTitle'), html);
-}
-
-async function loadGeo() {
-    const ips = [...new Set(allServers.map(s => s.address))];
-    const missing = ips.filter(ip => !geoCache[ip]);
-    if (missing.length === 0) {
-        openGeoModal();
-        updateCountryFilter();
-        return;
-    }
-    showToast(`🌍 ${t('geoLoading')} ${missing.length} ${t('geoHosts')}`);
-    await fetchGeoForIPs(ips);
-    updateCountryFilter();
-    openGeoModal();
-    renderServers(false);
-    showToast('🌍 OK');
-}
-
-function updateCountryFilter() {
-    const sel = document.getElementById('countryFilter');
-    if (!sel) return;
-    const countries = new Map();
-    Object.values(geoCache).forEach(g => {
-        if (g && !g.error && g.countryCode) {
-            countries.set(g.countryCode, g.country || g.countryCode);
-        }
-    });
-    const cur = sel.value;
-    sel.innerHTML = `<option value="">${t('countryAny')}</option>`;
-    [...countries.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([code, name]) => {
-        const opt = document.createElement('option');
-        opt.value = code;
-        opt.textContent = countryFlag(code) + ' ' + name;
-        sel.appendChild(opt);
-    });
-    sel.value = cur;
-}
-
 function openAnomaliesModal() {
     const anomalies = allServers.filter(srv => {
         const r = serverResults[serverKey(srv)];
@@ -1670,16 +1656,17 @@ function openHelpModal() {
         ['H', currentLang === 'ru' ? 'История' : 'History'],
         ['L', currentLang === 'ru' ? 'Лог' : 'Log'],
         ['P', currentLang === 'ru' ? 'Пробы' : 'Probes'],
-        ['G', currentLang === 'ru' ? 'Гео' : 'Geo'],
         ['D', currentLang === 'ru' ? 'Дифф' : 'Diff'],
-        ['Shift+Click address', 'QR'],
-        ['Click address', 'Copy'],
-        ['Click players', currentLang === 'ru' ? 'Список игроков' : 'Player list']
+        ['I', currentLang === 'ru' ? 'Импорт JSON' : 'Import JSON'],
+        ['Shift+Click', 'QR'],
+        ['Click', 'Copy']
     ];
     const html = shortcuts.map(([k, d]) =>
         `<div class="shortcut-row"><span>${escapeHtml(d)}</span><span class="kbd">${escapeHtml(k)}</span></div>`
-    ).join('');
-    openModal('❓ ' + t('helpShortcuts'), html);
+    ).join('') + `<div style="margin-top:14px;padding:10px 12px;background:var(--tag-bg);border-radius:8px;font-size:0.82rem;color:var(--text-dim);">
+        💡 <b>${currentLang === 'ru' ? 'Импорт JSON' : 'Import JSON'}:</b> ${currentLang === 'ru' ? 'перетащите файл servers.json в окно браузера' : 'drop servers.json into browser window'}
+    </div>`;
+    openModal('❓ ' + (currentLang === 'ru' ? 'Справка' : 'Help'), html);
 }
 
 // ============================================================
@@ -1726,7 +1713,6 @@ function buildExportData() {
         const key = serverKey(srv);
         const r = serverResults[key] || {};
         const tags = extractTags(r.motd || srv.motd, r.version || srv.version);
-        const geo = geoCache[srv.address] || {};
         return {
             address: srv.address, port: srv.port,
             online: r.online === true,
@@ -1743,10 +1729,6 @@ function buildExportData() {
             discord: extractDiscord(r.motd || srv.motd),
             bedrock: bedrockSupport[key] === true,
             hasIcon: !!r.icon,
-            country: geo.country || null,
-            countryCode: geo.countryCode || null,
-            city: geo.city || null,
-            isp: geo.isp || null,
             uptime: getUptime(key)?.percent ?? null,
             probes: r.probes || [],
             lastSeen: getLastSeen(key),
@@ -1755,13 +1737,39 @@ function buildExportData() {
     });
 }
 
+// Экспорт в формате, как отдаёт Rust-сканер (то, что он кидает в servers.json)
+function buildScannerFormat() {
+    return allServers
+        .filter(srv => serverResults[serverKey(srv)]?.online === true)
+        .map(srv => {
+            const key = serverKey(srv);
+            const r = serverResults[key] || {};
+            return {
+                address: srv.address,
+                port: srv.port,
+                online: true,
+                motd: r.motd || srv.motd || '',
+                players_online: r.players ?? 0,
+                players_max: r.maxPlayers ?? 20,
+                version: r.version || srv.version || '—'
+            };
+        });
+}
+
 function exportJson() {
     downloadFile(JSON.stringify(buildExportData(), null, 2), `mcscanner-${dateStr()}.json`, 'application/json');
     showToast('💾 JSON');
 }
+
+function exportScannerFormat() {
+    const data = buildScannerFormat();
+    downloadFile(JSON.stringify(data, null, 2), `servers-online-${dateStr()}.json`, 'application/json');
+    showToast(`💾 ${data.length} online servers`);
+}
+
 function exportCsv() {
     const data = buildExportData();
-    const cols = ['address','port','online','confidence','verified','conflict','favorite','customName','players','maxPlayers','version','motd','tags','discord','bedrock','country','city','isp','uptime','lastSeen'];
+    const cols = ['address','port','online','confidence','verified','conflict','favorite','customName','players','maxPlayers','version','motd','tags','discord','bedrock','uptime','lastSeen'];
     const header = cols.join(',');
     const rows = data.map(row => cols.map(c => {
         let v = row[c];
@@ -1774,6 +1782,7 @@ function exportCsv() {
     downloadFile(csv, `mcscanner-${dateStr()}.csv`, 'text/csv');
     showToast('📊 CSV');
 }
+
 function downloadFile(content, name, mime) {
     const blob = new Blob([content], { type: mime + ';charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -1815,147 +1824,4 @@ async function registerSW() {
     try { await navigator.serviceWorker.register('./sw.js'); addLog('ok', 'SW'); }
     catch (err) { addLog('warn', 'SW: ' + err.message); }
 }
-async function clearAllCaches() {
-    if (scanner) scanner.clearCache();
-    if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-    }
-    showToast('🗑️ Cache cleared');
-}
-
-let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('installBtn').style.display = 'flex';
-});
-document.getElementById('installBtn').addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    document.getElementById('installBtn').style.display = 'none';
-});
-
-// ============================================================
-//  EVENTS
-// ============================================================
-['searchInput','filterSelect','tagFilter','versionFilter','countryFilter','sortSelect','playersMin','playersMax'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const evt = (id === 'searchInput' || id === 'playersMin' || id === 'playersMax') ? 'input' : 'change';
-    el.addEventListener(evt, () => {
-        renderServers(true);
-        writeUrlParams();
-    });
-});
-
-document.querySelectorAll('.preset-btn').forEach(btn => {
-    btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
-});
-
-document.querySelectorAll('.view-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        viewMode = btn.dataset.view;
-        localStorage.setItem(LS.view, viewMode);
-        document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b === btn));
-        renderServers();
-    });
-});
-
-document.getElementById('refreshBtn').addEventListener('click', () => { scanner?.clearCache(); startScan(); });
-document.getElementById('stopBtn').addEventListener('click', () => {
-    if (scanner) { scanner.abort(); showToast('⏹'); }
-});
-document.getElementById('shareBtn').addEventListener('click', copyShareUrl);
-document.getElementById('copyOnlineBtn').addEventListener('click', copyOnlineList);
-document.getElementById('diffBtn').addEventListener('click', openDiffModal);
-document.getElementById('exportBtn').addEventListener('click', exportJson);
-document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
-document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
-document.getElementById('compareBtn').addEventListener('click', openCompareModal);
-document.getElementById('logBtn').addEventListener('click', openLogModal);
-document.getElementById('probeStatsBtn').addEventListener('click', openProbeStatsModal);
-document.getElementById('geoBtn').addEventListener('click', loadGeo);
-document.getElementById('clearCacheBtn').addEventListener('click', clearAllCaches);
-document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-document.getElementById('notifToggle').addEventListener('click', toggleNotifications);
-document.getElementById('helpBtn').addEventListener('click', openHelpModal);
-document.getElementById('langToggle').addEventListener('click', toggleLang);
-document.getElementById('modalClose').addEventListener('click', closeModal);
-document.getElementById('modalBackdrop').addEventListener('click', (e) => {
-    if (e.target.id === 'modalBackdrop') closeModal();
-});
-document.getElementById('loadMoreBtn').addEventListener('click', () => {
-    displayedCount += PAGE_SIZE;
-    renderServers(false);
-});
-document.getElementById('renameModeBtn').addEventListener('click', (e) => {
-    renameMode = !renameMode;
-    e.currentTarget.classList.toggle('active', renameMode);
-    e.currentTarget.textContent = renameMode ? '✏️ On' : t('btnRename');
-    showToast(renameMode ? '✏️ On' : '✏️ Off');
-});
-
-// Accent picker
-document.getElementById('accentBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.getElementById('accentPicker').classList.toggle('show');
-});
-document.querySelectorAll('.accent-swatch').forEach(s => {
-    s.addEventListener('click', () => {
-        setAccent(s.dataset.color);
-        document.getElementById('accentPicker').classList.remove('show');
-    });
-});
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('#accentPicker') && !e.target.closest('#accentBtn')) {
-        document.getElementById('accentPicker').classList.remove('show');
-    }
-});
-
-// Keyboard
-document.addEventListener('keydown', (e) => {
-    const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
-    if (e.key === 'Escape') {
-        if (document.getElementById('modalBackdrop').classList.contains('show')) closeModal();
-        else if (inInput) document.activeElement.blur();
-        return;
-    }
-    if (inInput) return;
-    switch (e.key.toLowerCase()) {
-        case '/': e.preventDefault(); document.getElementById('searchInput').focus(); break;
-        case 'r': scanner?.clearCache(); startScan(); break;
-        case 't': toggleTheme(); break;
-        case 'e': exportJson(); break;
-        case 'c': exportCsv(); break;
-        case 'h': openHistoryModal(); break;
-        case 'l': openLogModal(); break;
-        case 'p': openProbeStatsModal(); break;
-        case 'g': loadGeo(); break;
-        case 'd': openDiffModal(); break;
-        case '?': openHelpModal(); break;
-    }
-});
-
-// ============================================================
-//  INIT
-// ============================================================
-document.getElementById('year').textContent = new Date().getFullYear();
-applyTheme();
-applyAccent();
-applyLang();
-updateNotifBtn();
-registerSW();
-readUrlParams();
-
-// Установить активную view-кнопку
-document.querySelectorAll('.view-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.view === viewMode);
-});
-
-addLog('ok', `${APP_NAME} v4.0`);
-console.log(`[${APP_NAME}] Started. Author: ${APP_AUTHOR}. TG: ${TG_LINK}`);
-
-loadServersFromJson();
+async function clearAllCaches()
