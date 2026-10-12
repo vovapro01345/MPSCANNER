@@ -1460,4 +1460,502 @@ function openPlayerModal(key) {
     else html = list.map(p => {
         const name = typeof p === 'string' ? p : (p.name || p.name_clean || 'unknown');
         const uuid = typeof p === 'object' ? (p.id || p.uuid || '') : '';
-        return
+        return `<div class="player-item"><span>${escapeHtml(name)}</span>${uuid ? `<span style="color:var(--text-mute);font-size:0.7rem;margin-left:auto;">${escapeHtml(uuid)}</span>` : ''}</div>`;
+    }).join('');
+    openModal(`👥 ${srv.address}:${srv.port}`, html);
+}
+
+function openQrModal(key) {
+    const srv = allServers.find(s => serverKey(s) === key);
+    if (!srv) return;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(key)}`;
+    openModal(`QR — ${srv.address}:${srv.port}`,
+        `<div class="qr-wrap"><img src="${qrUrl}" alt="QR" width="220" height="220"><p style="margin-top:14px;font-family:monospace;color:var(--text-dim);">${escapeHtml(key)}</p></div>`);
+}
+
+function openLogModal() {
+    const logs = getLogs();
+    let html;
+    if (logs.length === 0) html = `<div class="modal-empty">${t('logEmpty')}</div>`;
+    else html = logs.slice(0, 100).map(l => {
+        const time = new Date(l.t).toLocaleTimeString();
+        return `<div class="log-item ${l.level}"><span class="time">${time}</span><span>${escapeHtml(l.msg)}</span></div>`;
+    }).join('');
+    openModal('📋 ' + t('btnLog'), html);
+}
+
+function openHistoryModal() {
+    const h = getHistory();
+    let html;
+    if (h.length === 0) html = `<div class="modal-empty">${t('historyEmpty')}</div>`;
+    else html = h.map(snap => {
+        const date = new Date(snap.t).toLocaleString(currentLang === 'ru' ? 'ru-RU' : 'en-US');
+        return `<div class="history-item"><span>${date}</span><span style="margin-left:auto;color:var(--accent);">${snap.online} / ${snap.total}</span></div>`;
+    }).join('');
+    openModal('📜 ' + t('btnHistory'), html);
+}
+
+function openCompareModal() {
+    const h = getHistory();
+    if (h.length < 2) { openModal('🔀', `<div class="modal-empty">${t('compareEmpty')}</div>`); return; }
+    const cur = h[0], prev = h[1];
+    const prevMap = {};
+    prev.servers.forEach(s => prevMap[s.k] = s);
+    const changes = [];
+    cur.servers.forEach(s => {
+        const p = prevMap[s.k];
+        if (!p) return;
+        if (p.online !== s.online) changes.push({ k: s.k, text: s.online ? '⬆️ online' : '⬇️ offline', level: s.online ? 'ok' : 'err' });
+        else if (s.online && Math.abs(s.players - p.players) >= 3) {
+            const diff = s.players - p.players;
+            changes.push({ k: s.k, text: `${diff > 0 ? '📈' : '📉'} ${p.players} → ${s.players}`, level: 'warn' });
+        }
+    });
+    let html = `<div style="margin-bottom:12px;color:var(--text-dim);font-size:0.85rem;">${new Date(prev.t).toLocaleString()} → ${new Date(cur.t).toLocaleString()}</div>`;
+    if (changes.length === 0) html += '<div class="modal-empty">—</div>';
+    else html += changes.map(c => `<div class="log-item ${c.level}"><span style="flex:1;font-family:monospace;font-size:0.78rem;">${escapeHtml(c.k)}</span><span>${escapeHtml(c.text)}</span></div>`).join('');
+    openModal('🔀 ' + t('btnCompare'), html);
+}
+
+function openDiffModal() {
+    let html = '';
+    if (!serverDiff) {
+        html = `<div class="modal-empty">${t('diffEmpty')}</div>`;
+    } else {
+        html = `<div style="margin-bottom:12px;color:var(--text-dim);font-size:0.85rem;">
+            <b>${t('diffAdded')}:</b> ${serverDiff.added.length} · 
+            <b>${t('diffRemoved')}:</b> ${serverDiff.removed.length} · 
+            <b>${t('diffSame')}:</b> ${serverDiff.same}
+        </div>`;
+        if (serverDiff.added.length === 0 && serverDiff.removed.length === 0) {
+            html += `<div class="modal-empty">${t('diffNoChange')}</div>`;
+        } else {
+            serverDiff.added.forEach(k => {
+                html += `<div class="diff-row added">➕ ${escapeHtml(k)}</div>`;
+            });
+            serverDiff.removed.forEach(k => {
+                html += `<div class="diff-row removed">➖ ${escapeHtml(k)}</div>`;
+            });
+        }
+    }
+    openModal(t('diffTitle'), html);
+}
+
+function openProbeStatsModal() {
+    const stats = scanner?.getProbeStats() || {};
+    const probeList = PROBES.filter(p => p.role !== 'bedrock');
+    let html = `<div style="margin-bottom:12px;color:var(--text-dim);font-size:0.85rem;">${t('btnProbes')}</div>`;
+    html += probeList.map(p => {
+        const s = stats[p.id] || { ok: 0, fail: 0, totalMs: 0 };
+        const total = s.ok + s.fail;
+        const avgMs = total > 0 ? Math.round(s.totalMs / total) : 0;
+        const rate = total > 0 ? Math.round((s.ok / total) * 100) : 0;
+        return `<div class="probe-row">
+            <span class="probe-name">${escapeHtml(p.name)}</span>
+            <span class="probe-stat">✅ <b>${s.ok}</b></span>
+            <span class="probe-stat">❌ <b>${s.fail}</b></span>
+            <span class="probe-stat">⚡ <b>${avgMs} ms</b></span>
+            <span class="probe-stat" style="margin-left:auto;color:var(--accent);"><b>${rate}%</b></span>
+        </div>`;
+    }).join('');
+    openModal('📡 ' + t('btnProbes'), html);
+}
+
+function openGeoModal() {
+    const ips = [...new Set(allServers.map(s => s.address))];
+    const hasData = ips.filter(ip => geoCache[ip] && !geoCache[ip].error).length;
+    let html = `<div style="margin-bottom:12px;color:var(--text-dim);font-size:0.85rem;">
+        ${hasData} / ${ips.length} ${t('geoHosts')}</div>`;
+    ips.sort().forEach(ip => {
+        const g = geoCache[ip];
+        if (g && !g.error) {
+            const flag = countryFlag(g.countryCode);
+            html += `<div class="geo-row">
+                <span class="ip">${escapeHtml(ip)}</span>
+                <span>${flag} ${escapeHtml(g.country)}</span>
+                <span style="color:var(--text-mute);">${escapeHtml(g.city || '')}</span>
+                <span style="margin-left:auto;color:var(--text-dim);font-size:0.75rem;">${escapeHtml(g.isp || '')}</span>
+            </div>`;
+        } else if (g && g.error) {
+            html += `<div class="geo-row"><span class="ip">${escapeHtml(ip)}</span><span style="color:var(--text-mute);">—</span></div>`;
+        } else {
+            html += `<div class="geo-row"><span class="ip">${escapeHtml(ip)}</span><span style="color:var(--text-mute);">—</span></div>`;
+        }
+    });
+    openModal('🌍 ' + t('geoTitle'), html);
+}
+
+async function loadGeo() {
+    const ips = [...new Set(allServers.map(s => s.address))];
+    const missing = ips.filter(ip => !geoCache[ip]);
+    if (missing.length === 0) {
+        openGeoModal();
+        updateCountryFilter();
+        return;
+    }
+    showToast(`🌍 ${t('geoLoading')} ${missing.length} ${t('geoHosts')}`);
+    await fetchGeoForIPs(ips);
+    updateCountryFilter();
+    openGeoModal();
+    renderServers(false);
+    showToast('🌍 OK');
+}
+
+function updateCountryFilter() {
+    const sel = document.getElementById('countryFilter');
+    if (!sel) return;
+    const countries = new Map();
+    Object.values(geoCache).forEach(g => {
+        if (g && !g.error && g.countryCode) {
+            countries.set(g.countryCode, g.country || g.countryCode);
+        }
+    });
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${t('countryAny')}</option>`;
+    [...countries.entries()].sort((a,b) => a[1].localeCompare(b[1])).forEach(([code, name]) => {
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = countryFlag(code) + ' ' + name;
+        sel.appendChild(opt);
+    });
+    sel.value = cur;
+}
+
+function openAnomaliesModal() {
+    const anomalies = allServers.filter(srv => {
+        const r = serverResults[serverKey(srv)];
+        if (!r || r.online !== true) return false;
+        if (r.players != null && r.maxPlayers != null && r.players > r.maxPlayers) return true;
+        if (r.players != null && r.players < 0) return true;
+        return false;
+    });
+    let html;
+    if (anomalies.length === 0) html = `<div class="modal-empty">${t('anomaliesEmpty')}</div>`;
+    else html = anomalies.map(srv => {
+        const r = serverResults[serverKey(srv)];
+        return `<div class="diff-row players">⚠️ ${escapeHtml(serverKey(srv))} — ${r.players} / ${r.maxPlayers}</div>`;
+    }).join('');
+    openModal(t('anomaliesTitle'), html);
+}
+
+function openDeadIPsModal() {
+    const { dead, byIP } = computeDeadIPs();
+    let html;
+    if (dead.size === 0) html = `<div class="modal-empty">${t('deadIPsEmpty')}</div>`;
+    else html = [...dead].sort().map(ip => {
+        const s = byIP[ip];
+        return `<div class="diff-row down">💀 ${escapeHtml(ip)} — 0 / ${s.total}</div>`;
+    }).join('');
+    openModal(t('deadIPsTitle'), html);
+}
+
+async function copyOnlineList() {
+    const online = currentFiltered.filter(srv => serverResults[serverKey(srv)]?.online === true);
+    if (online.length === 0) { showToast(t('copyOnlineEmpty')); return; }
+    const list = online.map(srv => `${srv.address}:${srv.port}`).join('\n');
+    try {
+        await navigator.clipboard.writeText(list);
+        showToast(`${t('copyOnlineDone')} ${online.length}`);
+    } catch { showToast('❌'); }
+}
+
+function openHelpModal() {
+    const shortcuts = [
+        ['/', currentLang === 'ru' ? 'Фокус на поиск' : 'Focus search'],
+        ['Esc', currentLang === 'ru' ? 'Закрыть модалку' : 'Close modal'],
+        ['R', currentLang === 'ru' ? 'Перезапустить сканирование' : 'Rescan'],
+        ['T', currentLang === 'ru' ? 'Тема' : 'Theme'],
+        ['E', currentLang === 'ru' ? 'Экспорт JSON' : 'Export JSON'],
+        ['C', currentLang === 'ru' ? 'Экспорт CSV' : 'Export CSV'],
+        ['H', currentLang === 'ru' ? 'История' : 'History'],
+        ['L', currentLang === 'ru' ? 'Лог' : 'Log'],
+        ['P', currentLang === 'ru' ? 'Пробы' : 'Probes'],
+        ['G', currentLang === 'ru' ? 'Гео' : 'Geo'],
+        ['D', currentLang === 'ru' ? 'Дифф' : 'Diff'],
+        ['Shift+Click address', 'QR'],
+        ['Click address', 'Copy'],
+        ['Click players', currentLang === 'ru' ? 'Список игроков' : 'Player list']
+    ];
+    const html = shortcuts.map(([k, d]) =>
+        `<div class="shortcut-row"><span>${escapeHtml(d)}</span><span class="kbd">${escapeHtml(k)}</span></div>`
+    ).join('');
+    openModal('❓ ' + t('helpShortcuts'), html);
+}
+
+// ============================================================
+//  STATS
+// ============================================================
+function updateStats() {
+    let online = 0, offline = 0, players = 0, confSum = 0, confCount = 0;
+    allServers.forEach(srv => {
+        const r = serverResults[serverKey(srv)];
+        if (!r) return;
+        if (r.online === true) {
+            online++;
+            players += (r.players ?? 0);
+            if (typeof r.confidence === 'number') { confSum += r.confidence; confCount++; }
+        } else if (r.online === false) {
+            offline++;
+            if (typeof r.confidence === 'number') { confSum += r.confidence; confCount++; }
+        }
+    });
+    const total = allServers.length;
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('onlineCount').textContent = online;
+    document.getElementById('offlineCount').textContent = offline;
+    document.getElementById('playersTotal').textContent = players;
+    document.getElementById('avgConfidence').textContent = confCount > 0 ? Math.round(confSum / confCount) + '%' : '—';
+    document.getElementById('deadIpsCount').textContent = getDeadIPsCount();
+}
+
+function updateLastUpdate() {
+    const el = document.getElementById('lastUpdate');
+    if (!el) return;
+    const last = Number(localStorage.getItem(LS.lastScan) || Date.now());
+    const d = new Date(last);
+    el.textContent = (currentLang === 'ru' ? 'Последнее сканирование: ' : 'Last scan: ') +
+        d.toLocaleDateString(currentLang === 'ru' ? 'ru-RU' : 'en-US') + ' ' +
+        d.toLocaleTimeString(currentLang === 'ru' ? 'ru-RU' : 'en-US');
+}
+
+// ============================================================
+//  EXPORT
+// ============================================================
+function buildExportData() {
+    return allServers.map(srv => {
+        const key = serverKey(srv);
+        const r = serverResults[key] || {};
+        const tags = extractTags(r.motd || srv.motd, r.version || srv.version);
+        const geo = geoCache[srv.address] || {};
+        return {
+            address: srv.address, port: srv.port,
+            online: r.online === true,
+            confidence: r.confidence ?? null,
+            verified: r.verified ?? false,
+            conflict: r.conflict ?? false,
+            favorite: isFavorite(key),
+            customName: getCustomName(key),
+            players: r.players ?? null,
+            maxPlayers: r.maxPlayers ?? null,
+            version: r.version || srv.version || null,
+            motd: r.motd || srv.motd || null,
+            tags,
+            discord: extractDiscord(r.motd || srv.motd),
+            bedrock: bedrockSupport[key] === true,
+            hasIcon: !!r.icon,
+            country: geo.country || null,
+            countryCode: geo.countryCode || null,
+            city: geo.city || null,
+            isp: geo.isp || null,
+            uptime: getUptime(key)?.percent ?? null,
+            probes: r.probes || [],
+            lastSeen: getLastSeen(key),
+            scannedAt: new Date().toISOString()
+        };
+    });
+}
+
+function exportJson() {
+    downloadFile(JSON.stringify(buildExportData(), null, 2), `mcscanner-${dateStr()}.json`, 'application/json');
+    showToast('💾 JSON');
+}
+function exportCsv() {
+    const data = buildExportData();
+    const cols = ['address','port','online','confidence','verified','conflict','favorite','customName','players','maxPlayers','version','motd','tags','discord','bedrock','country','city','isp','uptime','lastSeen'];
+    const header = cols.join(',');
+    const rows = data.map(row => cols.map(c => {
+        let v = row[c];
+        if (Array.isArray(v)) v = v.join('|');
+        if (v == null) v = '';
+        v = String(v).replace(/"/g, '""').replace(/\n/g, ' ');
+        return `"${v}"`;
+    }).join(','));
+    const csv = '\uFEFF' + [header, ...rows].join('\n');
+    downloadFile(csv, `mcscanner-${dateStr()}.csv`, 'text/csv');
+    showToast('📊 CSV');
+}
+function downloadFile(content, name, mime) {
+    const blob = new Blob([content], { type: mime + ';charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+}
+function dateStr() { return new Date().toISOString().slice(0, 10); }
+
+// ============================================================
+//  TOAST / ERRORS
+// ============================================================
+function showError(msg) {
+    const b = document.getElementById('errorBanner');
+    b.textContent = '⚠ ' + msg;
+    b.classList.add('show');
+}
+function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
+let toastTimer = null;
+function showToast(msg) {
+    let toast = document.getElementById('mcscanner-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'mcscanner-toast';
+        toast.className = 'toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+// ============================================================
+//  SW / PWA
+// ============================================================
+async function registerSW() {
+    if (!('serviceWorker' in navigator)) return;
+    try { await navigator.serviceWorker.register('./sw.js'); addLog('ok', 'SW'); }
+    catch (err) { addLog('warn', 'SW: ' + err.message); }
+}
+async function clearAllCaches() {
+    if (scanner) scanner.clearCache();
+    if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    showToast('🗑️ Cache cleared');
+}
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBtn').style.display = 'flex';
+});
+document.getElementById('installBtn').addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('installBtn').style.display = 'none';
+});
+
+// ============================================================
+//  EVENTS
+// ============================================================
+['searchInput','filterSelect','tagFilter','versionFilter','countryFilter','sortSelect','playersMin','playersMax'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const evt = (id === 'searchInput' || id === 'playersMin' || id === 'playersMax') ? 'input' : 'change';
+    el.addEventListener(evt, () => {
+        renderServers(true);
+        writeUrlParams();
+    });
+});
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+document.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        viewMode = btn.dataset.view;
+        localStorage.setItem(LS.view, viewMode);
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b === btn));
+        renderServers();
+    });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', () => { scanner?.clearCache(); startScan(); });
+document.getElementById('stopBtn').addEventListener('click', () => {
+    if (scanner) { scanner.abort(); showToast('⏹'); }
+});
+document.getElementById('shareBtn').addEventListener('click', copyShareUrl);
+document.getElementById('copyOnlineBtn').addEventListener('click', copyOnlineList);
+document.getElementById('diffBtn').addEventListener('click', openDiffModal);
+document.getElementById('exportBtn').addEventListener('click', exportJson);
+document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+document.getElementById('historyBtn').addEventListener('click', openHistoryModal);
+document.getElementById('compareBtn').addEventListener('click', openCompareModal);
+document.getElementById('logBtn').addEventListener('click', openLogModal);
+document.getElementById('probeStatsBtn').addEventListener('click', openProbeStatsModal);
+document.getElementById('geoBtn').addEventListener('click', loadGeo);
+document.getElementById('clearCacheBtn').addEventListener('click', clearAllCaches);
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+document.getElementById('notifToggle').addEventListener('click', toggleNotifications);
+document.getElementById('helpBtn').addEventListener('click', openHelpModal);
+document.getElementById('langToggle').addEventListener('click', toggleLang);
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalBackdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'modalBackdrop') closeModal();
+});
+document.getElementById('loadMoreBtn').addEventListener('click', () => {
+    displayedCount += PAGE_SIZE;
+    renderServers(false);
+});
+document.getElementById('renameModeBtn').addEventListener('click', (e) => {
+    renameMode = !renameMode;
+    e.currentTarget.classList.toggle('active', renameMode);
+    e.currentTarget.textContent = renameMode ? '✏️ On' : t('btnRename');
+    showToast(renameMode ? '✏️ On' : '✏️ Off');
+});
+
+// Accent picker
+document.getElementById('accentBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('accentPicker').classList.toggle('show');
+});
+document.querySelectorAll('.accent-swatch').forEach(s => {
+    s.addEventListener('click', () => {
+        setAccent(s.dataset.color);
+        document.getElementById('accentPicker').classList.remove('show');
+    });
+});
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#accentPicker') && !e.target.closest('#accentBtn')) {
+        document.getElementById('accentPicker').classList.remove('show');
+    }
+});
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+    const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
+    if (e.key === 'Escape') {
+        if (document.getElementById('modalBackdrop').classList.contains('show')) closeModal();
+        else if (inInput) document.activeElement.blur();
+        return;
+    }
+    if (inInput) return;
+    switch (e.key.toLowerCase()) {
+        case '/': e.preventDefault(); document.getElementById('searchInput').focus(); break;
+        case 'r': scanner?.clearCache(); startScan(); break;
+        case 't': toggleTheme(); break;
+        case 'e': exportJson(); break;
+        case 'c': exportCsv(); break;
+        case 'h': openHistoryModal(); break;
+        case 'l': openLogModal(); break;
+        case 'p': openProbeStatsModal(); break;
+        case 'g': loadGeo(); break;
+        case 'd': openDiffModal(); break;
+        case '?': openHelpModal(); break;
+    }
+});
+
+// ============================================================
+//  INIT
+// ============================================================
+document.getElementById('year').textContent = new Date().getFullYear();
+applyTheme();
+applyAccent();
+applyLang();
+updateNotifBtn();
+registerSW();
+readUrlParams();
+
+// Установить активную view-кнопку
+document.querySelectorAll('.view-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.view === viewMode);
+});
+
+addLog('ok', `${APP_NAME} v4.0`);
+console.log(`[${APP_NAME}] Started. Author: ${APP_AUTHOR}. TG: ${TG_LINK}`);
+
+loadServersFromJson();
