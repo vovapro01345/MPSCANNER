@@ -1,13 +1,9 @@
 // MCscanner — Service Worker by Real_Studio
-const VERSION = 'mcscanner-v4.2.0';
+// Стратегия: network-first для статики, TTL-кэш для API
+const VERSION = 'mcscanner-v4.2.1';
 const STATIC_CACHE = `${VERSION}-static`;
 const API_CACHE = `${VERSION}-api`;
 const API_CACHE_TTL = 5 * 60 * 1000;
-
-const STATIC_ASSETS = [
-  './', './index.html', './styles.css', './app.js',
-  './manifest.json', './servers.json'
-];
 
 const API_HOSTS = [
   'api.mcsrvstat.us',
@@ -15,12 +11,8 @@ const API_HOSTS = [
   'mcapi.us'
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then(cache => cache.addAll(STATIC_ASSETS).catch(() => {}))
-      .then(() => self.skipWaiting())
-  );
+self.addEventListener('install', () => {
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -33,10 +25,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
   if (API_HOSTS.some(h => url.hostname.includes(h))) {
     event.respondWith(handleApiRequest(event.request));
     return;
   }
+
   if (url.origin === location.origin && event.request.method === 'GET') {
     event.respondWith(handleStaticRequest(event.request));
   }
@@ -70,16 +64,19 @@ async function handleApiRequest(request) {
 }
 
 async function handleStaticRequest(request) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
+  // Сначала сеть
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { cache: 'no-cache' });
     if (response.ok) {
       const cache = await caches.open(STATIC_CACHE);
       cache.put(request, response.clone());
+      return response;
     }
     return response;
   } catch (err) {
+    // Сеть упала — из кэша
+    const cached = await caches.match(request);
+    if (cached) return cached;
     return new Response('Офлайн', { status: 503 });
   }
 }
