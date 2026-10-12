@@ -1,5 +1,5 @@
 // MCscanner — Service Worker by Real_Studio
-const VERSION = 'mcscanner-v3.1.0';
+const VERSION = 'mcscanner-v4.1.0';
 const STATIC_CACHE = `${VERSION}-static`;
 const API_CACHE = `${VERSION}-api`;
 const API_CACHE_TTL = 5 * 60 * 1000;
