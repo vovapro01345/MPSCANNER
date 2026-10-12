@@ -4,11 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCscanner — by Real_Studio</title>
-    <meta name="description" content="MCscanner — сканер Minecraft-серверов от Real_Studio. Еженедельное сканирование по выходным.">
+    <meta name="description" content="MCscanner — сканер Minecraft-серверов от Real_Studio. История, иконки, избранное, PWA.">
+    <meta name="theme-color" content="#0f0f1a">
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛏</text></svg>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MCscanner">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-R4WVDS98QQ"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-R4WVDS98QQ');
+    </script>
 </head>
 <body>
+    <div class="topbar">
+        <button class="icon-btn" id="themeToggle" title="Тема (T)">🌙</button>
+        <button class="icon-btn" id="notifToggle" title="Уведомления">🔔</button>
+        <button class="icon-btn" id="installBtn" title="Установить приложение" style="display:none;">⬇️</button>
+        <button class="icon-btn" id="helpBtn" title="Горячие клавиши (?)">❓</button>
+    </div>
+
     <div class="container">
         <header>
             <h1>⛏ MCscanner</h1>
@@ -16,18 +37,16 @@
                 Сканер Minecraft-серверов · <span class="brand">Real_Studio</span>
             </p>
             <div class="scan-info">
-                📅 Сканирование выполняется <b>каждую неделю в течение выходных</b> (сб–вс).
-                Все данные подтягиваются через публичные API в реальном времени.
-                <br><small>Из-за ограничений бесплатных API проверка занимает ~10–15 минут. Пожалуйста, подождите.</small>
+                📅 Сканирование <b>каждую неделю по выходным</b> (сб–вс) через публичные API.
+                <br><small>Задержка 1.5 сек · 200 серверов ≈ 5 мин · работает офлайн (PWA)</small>
             </div>
         </header>
 
         <div class="error-banner" id="errorBanner"></div>
 
-        <!-- Прогресс-бар -->
         <div class="progress-container" id="progressContainer" style="display: none;">
             <div class="progress-info">
-                <span>⏳ Сканирование серверов...</span>
+                <span>⏳ Сканирование...</span>
                 <span id="progressText">0 / 0</span>
             </div>
             <div class="progress-bar-bg">
@@ -37,46 +56,81 @@
         </div>
 
         <div class="controls">
-            <input type="text" id="searchInput" placeholder="Поиск по названию, адресу..." autocomplete="off">
+            <input type="text" id="searchInput" placeholder="Поиск... (нажмите /)" autocomplete="off">
             <select id="filterSelect">
                 <option value="all">Все серверы</option>
                 <option value="online">Только онлайн</option>
                 <option value="offline">Только офлайн</option>
-                <option value="with-icon">С иконкой</option>
+                <option value="favorites">⭐ Избранные</option>
+                <option value="with-icon">🖼️ С иконкой</option>
+                <option value="has-players">👥 С игроками</option>
+                <option value="discord">💬 С Discord</option>
+                <option value="cracked">🏴‍☠️ Пиратские</option>
+                <option value="premium">🔒 Лицензионные</option>
+            </select>
+            <select id="tagFilter">
+                <option value="">🏷️ Любой тег</option>
+                <option value="survival">Survival</option>
+                <option value="pvp">PvP</option>
+                <option value="anarchy">Anarchy</option>
+                <option value="skyblock">SkyBlock</option>
+                <option value="creative">Creative</option>
+                <option value="modded">Modded</option>
+                <option value="vanilla">Vanilla</option>
+                <option value="hardcore">Hardcore</option>
+                <option value="rpg">RPG</option>
+                <option value="minigames">Minigames</option>
+                <option value="towny">Towny</option>
+                <option value="factions">Factions</option>
+                <option value="prison">Prison</option>
+                <option value="bedrock">Bedrock</option>
+            </select>
+            <select id="versionFilter">
+                <option value="">🌐 Любая версия</option>
+                <option value="1.21">1.21.x</option>
+                <option value="1.20">1.20.x</option>
+                <option value="1.19">1.19.x</option>
+                <option value="1.18">1.18.x</option>
+                <option value="1.16">1.16.x</option>
+                <option value="1.12">1.12.x</option>
+                <option value="1.8">1.8.x</option>
             </select>
             <select id="sortSelect">
                 <option value="status">Сортировка: по статусу</option>
+                <option value="fill-desc">🔥 По заполненности</option>
                 <option value="players-desc">Игроков: больше → меньше</option>
                 <option value="players-asc">Игроков: меньше → больше</option>
                 <option value="name-asc">Название: A → Z</option>
                 <option value="name-desc">Название: Z → A</option>
                 <option value="version">По версии</option>
             </select>
-            <button id="refreshBtn" type="button">🔄 Обновить всё</button>
-            <button id="exportBtn" type="button" class="secondary">💾 Экспорт</button>
+        </div>
+
+        <div class="actions">
+            <button id="refreshBtn" type="button" class="primary">🔄 Обновить всё</button>
+            <button id="renameModeBtn" type="button" class="secondary" title="Переименовать серверы">✏️ Имена</button>
+            <button id="exportBtn" type="button" class="secondary">💾 JSON</button>
+            <button id="exportCsvBtn" type="button" class="secondary">📊 CSV</button>
+            <button id="historyBtn" type="button" class="secondary">📜 История</button>
+            <button id="compareBtn" type="button" class="secondary">🔀 Сравнить</button>
+            <button id="logBtn" type="button" class="secondary">📋 Лог</button>
+            <button id="clearCacheBtn" type="button" class="secondary" title="Очистить кэш API">🗑️ Кэш</button>
         </div>
 
         <div class="stats-bar">
-            <div class="stat">
-                <div class="stat-value" id="totalCount">—</div>
-                <div class="stat-label">Всего</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="onlineCount" style="color:#22c55e;">—</div>
-                <div class="stat-label">Онлайн</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="offlineCount" style="color:#ef4444;">—</div>
-                <div class="stat-label">Офлайн</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="playersTotal" style="color:#3b82f6;">—</div>
-                <div class="stat-label">Игроков</div>
-            </div>
+            <div class="stat"><div class="stat-value" id="totalCount">—</div><div class="stat-label">Всего</div></div>
+            <div class="stat"><div class="stat-value" id="onlineCount" style="color:#22c55e;">—</div><div class="stat-label">Онлайн</div></div>
+            <div class="stat"><div class="stat-value" id="offlineCount" style="color:#ef4444;">—</div><div class="stat-label">Офлайн</div></div>
+            <div class="stat"><div class="stat-value" id="playersTotal" style="color:#3b82f6;">—</div><div class="stat-label">Игроков</div></div>
+            <div class="stat"><div class="stat-value" id="onlinePercent" style="color:#6ee7b7;">—</div><div class="stat-label">% онлайна</div></div>
         </div>
 
         <div class="server-grid" id="serverGrid">
             <div class="empty-state">Загрузка серверов...</div>
+        </div>
+
+        <div class="load-more-wrap" id="loadMoreWrap" style="display:none;">
+            <button id="loadMoreBtn" class="secondary">⬇️ Показать ещё <span id="loadMoreCount"></span></button>
         </div>
 
         <footer class="footer">
@@ -85,6 +139,17 @@
             </div>
             <div class="footer-line" id="lastUpdate">—</div>
         </footer>
+    </div>
+
+    <!-- Универсальное модальное окно -->
+    <div class="modal-backdrop" id="modalBackdrop">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Заголовок</div>
+                <button class="modal-close" id="modalClose">×</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
     </div>
 
     <script src="app.js"></script>
