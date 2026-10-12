@@ -1,8 +1,19 @@
 // ============================================================
-//  КОНФИГУРАЦИЯ
+//  MCscanner — by Real_Studio
+//  Сканирование Minecraft-серверов через бесплатные API
+//  Периодичность: еженедельно, по выходным (сб–вс)
 // ============================================================
+
+const APP_NAME = 'MCscanner';
+const APP_AUTHOR = 'Real_Studio';
 const SERVERS_JSON_PATH = './servers.json';
 
+// Ключ в localStorage для отслеживания последнего сканирования
+const LAST_SCAN_KEY = 'mcscanner_last_scan';
+// Раз в 7 дней — пересканируем автоматически
+const RESCAN_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Бесплатные API без ключей
 const API_ENDPOINTS = [
     {
         name: 'mcsrvstat.us',
@@ -10,7 +21,7 @@ const API_ENDPOINTS = [
             `https://api.mcsrvstat.us/3/${host}${port && port !== 25565 ? ':' + port : ''}`,
         headers: {
             // mcsrvstat.us требует непустой User-Agent, иначе 403
-            'User-Agent': 'MinecraftServerMonitor/1.0'
+            'User-Agent': `${APP_NAME}/1.0 (by ${APP_AUTHOR})`
         },
         parse: (data) => {
             if (!data || data.online === false || data.online === undefined) {
@@ -66,6 +77,41 @@ function stripMinecraftColors(str) {
     return str.replace(/§[0-9a-fk-orx]/gi, '').trim();
 }
 
+/**
+ * Возвращает true, если сегодня выходной (суббота или воскресенье).
+ * Используется для приоритетного автосканирования.
+ */
+function isWeekend() {
+    const day = new Date().getDay(); // 0 = вс, 6 = сб
+    return day === 0 || day === 6;
+}
+
+/**
+ * Пора ли запускать новое еженедельное сканирование?
+ * Логика: если прошло ≥7 дней ИЛИ сегодня выходной и последнее сканирование
+ * было не сегодня.
+ */
+function shouldAutoScan() {
+    const last = Number(localStorage.getItem(LAST_SCAN_KEY) || 0);
+    const now = Date.now();
+    const weekPassed = (now - last) >= RESCAN_INTERVAL_MS;
+
+    if (weekPassed) return true;
+
+    // Дополнительно: в выходные сканируем, если ещё не сканировали сегодня
+    if (isWeekend()) {
+        const lastDate = new Date(last).toDateString();
+        const today = new Date().toDateString();
+        if (lastDate !== today) return true;
+    }
+
+    return false;
+}
+
+function markScanned() {
+    localStorage.setItem(LAST_SCAN_KEY, String(Date.now()));
+}
+
 async function fetchServerStatus(address, port) {
     const errors = [];
 
@@ -96,7 +142,7 @@ async function fetchServerStatus(address, port) {
         }
     }
 
-    console.warn(`Не удалось проверить ${address}:${port}`, errors);
+    console.warn(`[${APP_NAME}] Не удалось проверить ${address}:${port}`, errors);
     return { online: false, error: errors.join('; ') };
 }
 
@@ -131,11 +177,11 @@ async function loadServersFromJson() {
         renderServers();
         updateStats();
 
-        // Запускаем проверку всех серверов
+        // Запускаем сканирование
         checkAllServers();
 
     } catch (err) {
-        console.error(err);
+        console.error(`[${APP_NAME}]`, err);
         showError(
             `Ошибка загрузки servers.json: ${err.message}. ` +
             `Убедитесь, что файл лежит рядом с index.html и сайт открыт через http(s), ` +
@@ -163,6 +209,7 @@ async function checkAllServers() {
     await Promise.allSettled(promises);
 
     isRefreshing = false;
+    markScanned();
     updateLastUpdate();
 }
 
@@ -190,7 +237,7 @@ async function refreshAll() {
 
     const btn = document.getElementById('refreshBtn');
     btn.disabled = true;
-    btn.textContent = '⏳ Проверка...';
+    btn.textContent = '⏳ Сканирование...';
 
     allServers.forEach(srv => {
         serverStatuses[serverKey(srv)] = { status: 'checking', data: null };
@@ -243,7 +290,6 @@ function renderServers() {
         return;
     }
 
-    // Сортировка: онлайн → проверяемые → офлайн
     const order = { online: 0, checking: 1, offline: 2 };
     filtered.sort((a, b) => {
         const sa = serverStatuses[serverKey(a)]?.status || 'offline';
@@ -264,11 +310,14 @@ function cardHtml(srv) {
     const statusLabels = {
         online: 'Онлайн',
         offline: 'Офлайн',
-        checking: 'Проверка'
+        checking: 'Сканируется'
     };
 
-    // Название — первая строка MOTD без цветов
-    const titleSource = srv.motd || '';
+    // Название — первая строка MOTD без цветов (или из API)
+    let titleSource = srv.motd || '';
+    if (status === 'online' && data.motd) {
+        titleSource = data.motd;
+    }
     const title = stripMinecraftColors(titleSource.split('\n')[0]) || 'Без названия';
 
     // MOTD: живой из API, иначе из JSON
@@ -320,7 +369,6 @@ function updateCard(key) {
 
     card.replaceWith(newCard);
 
-    // Перевешиваем обработчик
     newCard.addEventListener('click', () => {
         const s = allServers.find(ss => serverKey(ss) === key);
         if (s) checkSingleServer(s);
@@ -362,9 +410,14 @@ function updateStats() {
 
 function updateLastUpdate() {
     const el = document.getElementById('lastUpdate');
-    if (el) {
-        el.textContent = 'Последнее обновление: ' + new Date().toLocaleTimeString('ru-RU');
-    }
+    if (!el) return;
+
+    const last = Number(localStorage.getItem(LAST_SCAN_KEY) || Date.now());
+    const date = new Date(last);
+    const time = date.toLocaleTimeString('ru-RU');
+    const dateStr = date.toLocaleDateString('ru-RU');
+
+    el.textContent = `Последнее сканирование: ${dateStr} в ${time}`;
 }
 
 // ============================================================
@@ -390,4 +443,12 @@ document.getElementById('refreshBtn').addEventListener('click', refreshAll);
 // ============================================================
 //  СТАРТ
 // ============================================================
+document.getElementById('year').textContent = new Date().getFullYear();
+
+console.log(`[${APP_NAME}] Запущено. Автор: ${APP_AUTHOR}.`);
+console.log(`[${APP_NAME}] Сегодня ${isWeekend() ? 'выходной — приоритетное сканирование' : 'будний день'}.`);
+
+if (shouldAutoScan()) {
+    console.log(`[${APP_NAME}] Запуск еженедельного сканирования...`);
+}
 loadServersFromJson();
