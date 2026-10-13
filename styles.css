@@ -1,3 +1,7 @@
+/* ============================================================
+   MCscanner — by Real_Studio — v5.0
+   ============================================================ */
+
 :root {
     --bg: #0f0f1a;
     --card-bg: #1a1a2e;
@@ -34,50 +38,110 @@ body {
     transition: background 0.3s, color 0.3s;
 }
 
-/* Игрок в углу */
-.corner-player {
-    position: fixed;
-    bottom: 0;
-    right: 24px;
-    z-index: 99;
-    text-decoration: none;
-    pointer-events: auto;
-    filter: drop-shadow(0 0 16px rgba(110, 231, 183, 0.35));
-    animation: corner-idle 3.2s ease-in-out infinite;
-    transform-origin: bottom center;
-}
-.corner-player img {
-    width: 110px;
-    height: auto;
-    image-rendering: pixelated;
-    image-rendering: -moz-crisp-edges;
-    image-rendering: crisp-edges;
+/* ============================================================
+   RECLAME: Real_Speak
+   ============================================================ */
+.promo-banner {
     display: block;
-    pointer-events: none;
-    user-select: none;
+    max-width: 1200px;
+    margin: 0 auto 24px;
+    text-decoration: none;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    background: linear-gradient(135deg, #1e3a8a 0%, #0ea5e9 50%, #06b6d4 100%);
+    box-shadow: 0 8px 24px rgba(14, 165, 233, 0.2);
+    border: 1px solid rgba(110, 231, 183, 0.3);
 }
-.corner-player-shadow {
+.promo-banner:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(14, 165, 233, 0.35);
+}
+.promo-banner::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 20% 50%, rgba(110, 231, 183, 0.15), transparent 50%);
+    pointer-events: none;
+}
+.promo-content {
+    padding: 18px 22px;
+    position: relative;
+    z-index: 1;
+}
+.promo-badge {
     position: absolute;
-    bottom: -4px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 8px;
-    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5), transparent 70%);
-    border-radius: 50%;
-    pointer-events: none;
+    top: 10px; right: 14px;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: rgba(255, 255, 255, 0.75);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 3px 10px;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
 }
-.corner-player:hover {
-    filter: drop-shadow(0 0 22px rgba(110, 231, 183, 0.7));
+.promo-main {
+    display: flex;
+    align-items: center;
+    gap: 18px;
 }
-@keyframes corner-idle {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    25%      { transform: translateY(-2px) rotate(-1deg); }
-    50%      { transform: translateY(-5px) rotate(0deg); }
-    75%      { transform: translateY(-2px) rotate(1deg); }
+.promo-icon {
+    font-size: 2.6rem;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
+    animation: promo-pulse 2.4s ease-in-out infinite;
 }
+@keyframes promo-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+.promo-text { flex: 1; min-width: 0; color: #fff; }
+.promo-title {
+    font-weight: 800;
+    font-size: 1.05rem;
+    margin-bottom: 4px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.3px;
+}
+.promo-desc {
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.9);
+}
+.promo-desc code {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+}
+.promo-cta { flex-shrink: 0; }
+.promo-btn {
+    display: inline-block;
+    padding: 11px 22px;
+    background: #fff;
+    color: #1e3a8a;
+    font-weight: 800;
+    font-size: 0.9rem;
+    border-radius: 10px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+    letter-spacing: 0.3px;
+}
+.promo-banner:hover .promo-btn {
+    transform: scale(1.05);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+body.light .promo-banner { box-shadow: 0 8px 24px rgba(14, 165, 233, 0.25); }
 
-/* Drop overlay */
+/* ============================================================
+   Drop overlay
+   ============================================================ */
 .drop-overlay {
     position: fixed; inset: 0;
     background: rgba(15, 15, 26, 0.9);
@@ -93,6 +157,49 @@ body {
 .drop-title { font-size: 1.5rem; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
 .drop-sub { color: var(--text-dim); font-size: 0.9rem; }
 
+/* ============================================================
+   Corner player
+   ============================================================ */
+.corner-player {
+    position: fixed;
+    bottom: 0;
+    right: 24px;
+    z-index: 99;
+    text-decoration: none;
+    pointer-events: auto;
+    filter: drop-shadow(0 0 16px rgba(110, 231, 183, 0.35));
+    animation: corner-idle 3.2s ease-in-out infinite;
+    transform-origin: bottom center;
+}
+.corner-player img {
+    width: 110px; height: auto;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+}
+.corner-player-shadow {
+    position: absolute;
+    bottom: -4px; left: 50%;
+    transform: translateX(-50%);
+    width: 60px; height: 8px;
+    background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5), transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.corner-player:hover { filter: drop-shadow(0 0 22px rgba(110, 231, 183, 0.7)); }
+@keyframes corner-idle {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25%      { transform: translateY(-2px) rotate(-1deg); }
+    50%      { transform: translateY(-5px) rotate(0deg); }
+    75%      { transform: translateY(-2px) rotate(1deg); }
+}
+
+/* ============================================================
+   Topbar
+   ============================================================ */
 .topbar {
     position: fixed; top: 20px; right: 20px;
     display: flex; gap: 8px; z-index: 100; flex-wrap: wrap; justify-content: flex-end;
@@ -102,8 +209,10 @@ body {
     width: 42px; height: 42px; border-radius: 50%;
     background: var(--card-bg); border: 1px solid var(--card-border);
     color: var(--text); font-size: 1.05rem; cursor: pointer;
-    transition: transform 0.2s; display: flex; align-items: center; justify-content: center;
+    transition: transform 0.2s;
+    display: flex; align-items: center; justify-content: center;
     text-decoration: none;
+    font-family: inherit;
 }
 .icon-btn:hover { transform: scale(1.1); }
 .icon-btn.active { background: var(--accent-2); color: #fff; border-color: var(--accent-2); }
@@ -124,14 +233,20 @@ body {
 .accent-swatch:hover { transform: scale(1.15); }
 .accent-swatch.active { border-color: #fff; }
 
+/* ============================================================
+   Container / Header
+   ============================================================ */
 .container { max-width: 1200px; margin: 0 auto; }
 
 header { text-align: center; padding: 30px 0 10px; }
 header h1 {
     font-size: 2.4rem;
     background: var(--gradient-1);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text; margin-bottom: 6px; letter-spacing: 1px;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
 }
 header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18px; }
 .brand { color: var(--accent); font-weight: 600; letter-spacing: 0.5px; }
@@ -148,6 +263,27 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     color: var(--accent); font-family: ui-monospace, monospace;
 }
 
+/* API Warning */
+.api-warning {
+    max-width: 900px; margin: 0 auto 16px;
+    padding: 10px 16px;
+    background: rgba(234, 179, 8, 0.12);
+    border: 1px solid rgba(234, 179, 8, 0.4);
+    border-radius: 10px;
+    color: var(--warn);
+    font-size: 0.85rem;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px;
+}
+.api-warning button {
+    background: transparent; border: none;
+    color: var(--warn); cursor: pointer; font-size: 1.2rem;
+    font-family: inherit;
+}
+
+/* ============================================================
+   Scanner panel / Progress
+   ============================================================ */
 .scanner-panel {
     max-width: 780px; margin: 0 auto 20px; padding: 14px 20px;
     background: var(--card-bg); border: 1px solid var(--card-border);
@@ -169,6 +305,9 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); width: 0%; transition: width 0.3s; }
 .progress-current { margin-top: 8px; font-size: 0.78rem; color: var(--text-mute); font-family: ui-monospace, monospace; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* ============================================================
+   Presets / Daily stats / Saved presets
+   ============================================================ */
 .presets {
     display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
     margin-bottom: 14px; max-width: 900px; margin-left: auto; margin-right: auto;
@@ -182,6 +321,43 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .preset-btn:hover { border-color: var(--accent-2); color: var(--text); }
 .preset-btn.active { background: var(--accent-2); color: #fff; border-color: var(--accent-2); }
 
+.daily-stats {
+    max-width: 900px; margin: 0 auto 16px;
+    padding: 12px 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    display: flex; flex-wrap: wrap; gap: 20px;
+    justify-content: center;
+    font-size: 0.85rem;
+}
+.daily-stats .ds-item { display: flex; gap: 6px; align-items: center; }
+.daily-stats .ds-item b { color: var(--accent); }
+.daily-stats .ds-item.good b { color: var(--success); }
+.daily-stats .ds-item.bad b { color: var(--danger); }
+
+.saved-presets {
+    max-width: 900px; margin: 0 auto 14px;
+    display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+}
+.saved-presets .sp-chip {
+    padding: 5px 10px; border-radius: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-dim); cursor: pointer;
+    font-size: 0.75rem; font-family: inherit;
+    display: inline-flex; gap: 6px; align-items: center;
+}
+.saved-presets .sp-chip:hover { border-color: var(--accent-2); color: var(--text); }
+.saved-presets .sp-chip .del {
+    color: var(--danger); font-weight: 700;
+    padding: 0 2px; opacity: 0.6;
+}
+.saved-presets .sp-chip .del:hover { opacity: 1; }
+
+/* ============================================================
+   Controls / Actions
+   ============================================================ */
 .controls { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0 12px; }
 .controls input, .controls select {
     padding: 9px 14px; border-radius: 10px; border: 1px solid var(--card-border);
@@ -204,11 +380,17 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .actions button:hover { opacity: 0.9; transform: translateY(-1px); }
 .actions button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+/* ============================================================
+   Stats bar
+   ============================================================ */
 .stats-bar { display: flex; justify-content: center; gap: 24px; margin-bottom: 22px; flex-wrap: wrap; }
 .stat { text-align: center; }
 .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
 .stat-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
 
+/* ============================================================
+   Server grid / Cards
+   ============================================================ */
 .server-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
 .server-card {
     background: var(--card-bg); border-radius: 14px; padding: 16px;
@@ -230,6 +412,20 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     content: '💀'; position: absolute; top: 8px; left: 8px;
     font-size: 0.9rem; z-index: 3;
 }
+.server-card.is-clone { position: relative; }
+.server-card.is-clone::before {
+    content: '👥'; position: absolute; top: 8px; left: 8px;
+    font-size: 0.85rem; z-index: 3; opacity: 0.85;
+}
+.server-card.not-mc { border-left-color: #ef4444 !important; }
+.server-card.not-mc::after {
+    content: '⚠️ NOT MC'; position: absolute; top: 8px; left: 8px;
+    font-size: 0.6rem; font-weight: 700;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+    z-index: 3;
+}
 
 .fav-btn {
     position: absolute; top: 8px; right: 8px;
@@ -238,6 +434,7 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     font-size: 1rem; cursor: pointer; z-index: 2;
     display: flex; align-items: center; justify-content: center;
     transition: transform 0.2s, color 0.2s;
+    font-family: inherit;
 }
 .fav-btn:hover { transform: scale(1.2); color: #fbbf24; }
 .fav-btn.active { color: #fbbf24; }
@@ -365,7 +562,26 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Table view */
+/* ============================================================
+   Swipe
+   ============================================================ */
+.server-card {
+    touch-action: pan-y;
+    transition: transform 0.15s ease;
+}
+.server-card.swiping { transition: none; }
+.server-card.swipe-left {
+    transform: translateX(-80px);
+    box-shadow: inset -4px 0 0 var(--accent);
+}
+.server-card.swipe-right {
+    transform: translateX(80px);
+    box-shadow: inset 4px 0 0 var(--accent-2);
+}
+
+/* ============================================================
+   Table view
+   ============================================================ */
 .server-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-bg); }
 .server-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; min-width: 900px; }
 .server-table thead th {
@@ -397,7 +613,9 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .server-table .tbl-badge.offline { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 .server-table .tbl-badge.checking { background: rgba(234, 179, 8, 0.15); color: var(--warn); }
 
-/* Grouped view */
+/* ============================================================
+   Grouped view
+   ============================================================ */
 .ip-group {
     background: var(--card-bg); border: 1px solid var(--card-border);
     border-radius: 12px; margin-bottom: 12px; overflow: hidden;
@@ -420,6 +638,9 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 .ip-group.expanded .ip-group-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
 .ip-group-body .server-card { background: var(--bg); }
 
+/* ============================================================
+   Empty / Load more / Error
+   ============================================================ */
 .empty-state {
     grid-column: 1 / -1; text-align: center; padding: 60px 20px;
     color: var(--text-mute); line-height: 1.6;
@@ -440,6 +661,9 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 }
 .error-banner.show { display: block; }
 
+/* ============================================================
+   Footer
+   ============================================================ */
 .footer {
     text-align: center; margin-top: 40px; padding-top: 20px;
     border-top: 1px solid var(--card-border);
@@ -451,7 +675,18 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     transition: color 0.15s;
 }
 .tg-link:hover { color: #4db8e8; text-decoration: underline; }
+.footer-promo { margin-top: 4px; }
+.promo-link {
+    color: #38bdf8;
+    text-decoration: none;
+    font-weight: 700;
+    transition: color 0.15s;
+}
+.promo-link:hover { color: #7dd3fc; text-decoration: underline; }
 
+/* ============================================================
+   Modal
+   ============================================================ */
 .modal-backdrop {
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px); display: none;
@@ -475,6 +710,7 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     background: transparent; border: none; color: var(--text-dim);
     font-size: 1.6rem; cursor: pointer; line-height: 1;
     padding: 0 6px; border-radius: 6px; transition: background 0.15s;
+    font-family: inherit;
 }
 .modal-close:hover { background: var(--tag-bg); color: var(--text); }
 .modal-body { padding: 16px 20px; overflow-y: auto; font-size: 0.9rem; }
@@ -527,6 +763,32 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--text);
 }
 
+/* ============================================================
+   Discord form
+   ============================================================ */
+.discord-form { display: flex; flex-direction: column; gap: 10px; }
+.discord-form input {
+    padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: var(--bg); color: var(--text);
+    font-family: inherit; font-size: 0.88rem;
+}
+.discord-form button {
+    padding: 9px 18px; border-radius: 8px;
+    border: none; cursor: pointer; font-weight: 600;
+    font-family: inherit;
+}
+.discord-form button.primary {
+    background: linear-gradient(135deg, #5865F2, #4752c4); color: #fff;
+}
+.discord-form button.secondary {
+    background: var(--tag-bg); color: var(--text-dim);
+    border: 1px solid var(--card-border);
+}
+
+/* ============================================================
+   Toast
+   ============================================================ */
 .toast {
     position: fixed; bottom: 24px; left: 50%;
     transform: translateX(-50%) translateY(80px);
@@ -542,6 +804,79 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
 
 .sparkline { display: inline-block; vertical-align: middle; }
 
+/* ============================================================
+   Mobile nav / Mobile filters
+   ============================================================ */
+.mobile-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card-bg);
+    border-top: 1px solid var(--card-border);
+    z-index: 90;
+    padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+    justify-content: space-around;
+}
+.mobile-nav button {
+    background: transparent; border: none;
+    color: var(--text-dim);
+    font-size: 1.3rem; padding: 8px 16px;
+    cursor: pointer; border-radius: 10px;
+    font-family: inherit;
+}
+.mobile-nav button.active { color: var(--accent-2); }
+
+.mobile-filters-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: none; align-items: flex-end; justify-content: center;
+    z-index: 1000;
+}
+.mobile-filters-backdrop.show { display: flex; }
+.mobile-filters {
+    background: var(--card-bg);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    border: 1px solid var(--card-border);
+    border-bottom: none;
+    width: 100%; max-width: 560px;
+    max-height: 80vh;
+    display: flex; flex-direction: column;
+    animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.mf-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-bottom: 1px solid var(--card-border);
+    font-size: 1rem;
+}
+.mf-header button {
+    background: transparent; border: none; color: var(--text-dim);
+    font-size: 1.6rem; cursor: pointer; line-height: 1;
+    font-family: inherit;
+}
+.mf-body {
+    padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;
+    overflow-y: auto;
+}
+.mf-body label { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; color: var(--text-dim); }
+.mf-body input, .mf-body select {
+    padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--card-border);
+    background: var(--bg); color: var(--text);
+    font-family: inherit; font-size: 0.9rem;
+    outline: none;
+}
+.mf-body button.primary {
+    padding: 12px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent-2), #2563eb);
+    color: #fff; border: none; font-weight: 700; cursor: pointer;
+    font-family: inherit; font-size: 0.95rem;
+}
+
+/* ============================================================
+   Media queries
+   ============================================================ */
 @media (max-width: 700px) {
     .server-grid { grid-template-columns: 1fr; }
     header h1 { font-size: 1.7rem; }
@@ -560,4 +895,19 @@ header .subtitle { color: var(--text-dim); font-size: 0.95rem; margin-bottom: 18
     .corner-player { right: 10px; }
     .corner-player img { width: 70px; }
     .corner-player-shadow { width: 42px; }
+
+    /* Скрыть верхний топбар на мобильных, показать нижнюю навигацию */
+    .topbar { display: none; }
+    .corner-player { display: none; }
+    .mobile-nav { display: flex; }
+    body { padding-bottom: 70px; }
+
+    /* Промо-баннер на мобильных */
+    .promo-content { padding: 14px 16px; }
+    .promo-main { flex-wrap: wrap; gap: 12px; }
+    .promo-icon { font-size: 2rem; }
+    .promo-title { font-size: 0.95rem; }
+    .promo-desc { font-size: 0.78rem; }
+    .promo-btn { padding: 9px 16px; font-size: 0.82rem; }
+    .promo-cta { width: 100%; text-align: center; }
 }
