@@ -1,6 +1,6 @@
 // MCscanner — Service Worker by Real_Studio
 // Стратегия: network-first для статики, TTL-кэш для API
-const VERSION = 'mcscanner-v5';
+const VERSION = 'mcscanner-v5.0.1';
 const STATIC_CACHE = `${VERSION}-static`;
 const API_CACHE = `${VERSION}-api`;
 const API_CACHE_TTL = 5 * 60 * 1000;
