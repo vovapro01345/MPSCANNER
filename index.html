@@ -47,6 +47,8 @@
         <button class="icon-btn" id="notifToggle" title="Уведомления">🔔</button>
         <button class="icon-btn" id="installBtn" title="Установить" style="display:none;">⬇️</button>
         <a class="icon-btn tg-btn" id="tgBtn" href="https://t.me/Real_Studio_Game" target="_blank" rel="noopener" title="Telegram-канал">✈️</a>
+        <button class="icon-btn" id="discordBtn" title="Discord уведомления">💬</button>
+        <button class="icon-btn" id="presetsBtn" title="Сохранённые подборки">📚</button>
         <button class="icon-btn" id="helpBtn" title="Справка (?)">❓</button>
     </div>
 
@@ -71,6 +73,12 @@
             </div>
         </header>
 
+        <!-- Баннер: API недоступен -->
+        <div class="api-warning" id="apiWarning" style="display:none;">
+            <span id="apiWarningText">⚠️ Один или несколько API-проб недоступны</span>
+            <button onclick="document.getElementById('apiWarning').style.display='none'">×</button>
+        </div>
+
         <!-- РЕКЛАМНЫЙ БАННЕР: Real_Speak -->
         <a class="promo-banner" href="https://realspeak.ddns.net/?invite=P3UQA6HY" target="_blank" rel="noopener">
             <div class="promo-content">
@@ -90,10 +98,10 @@
                 </div>
             </div>
         </a>
-        <!-- /РЕКЛАМНЫЙ БАННЕР -->
 
         <div class="error-banner" id="errorBanner"></div>
 
+        <!-- Панель сканера -->
         <div class="scanner-panel" id="scannerPanel" style="display:none;">
             <div class="sp-row"><span class="sp-label">⏳ Прогресс:</span><span class="sp-value" id="spProgress">0 / 0</span></div>
             <div class="sp-row"><span class="sp-label">🎯 Согласие проб:</span><span class="sp-value" id="spAgreement">—</span></div>
@@ -111,6 +119,7 @@
             <div class="progress-current" id="progressCurrent">—</div>
         </div>
 
+        <!-- Пресеты -->
         <div class="presets" id="presets">
             <button class="preset-btn" data-preset="all">📋 Все</button>
             <button class="preset-btn" data-preset="online-players">🔥 Онлайн + игроки</button>
@@ -118,7 +127,14 @@
             <button class="preset-btn" data-preset="anomalies">⚠️ Аномалии</button>
             <button class="preset-btn" data-preset="dead-ips">💀 Мёртвые IP</button>
             <button class="preset-btn" data-preset="favorites">⭐ Избранные</button>
+            <button class="preset-btn" data-preset="clones">👥 Клоны</button>
         </div>
+
+        <!-- Дневная статистика -->
+        <div class="daily-stats" id="dailyStats" style="display:none;"></div>
+
+        <!-- Сохранённые подборки -->
+        <div class="saved-presets" id="savedPresets" style="display:none;"></div>
 
         <div class="controls">
             <input type="text" id="searchInput" placeholder="Поиск... (/)" autocomplete="off">
@@ -132,6 +148,8 @@
                 <option value="discord">💬 С Discord</option>
                 <option value="confident">🎯 С высокой уверенностью</option>
                 <option value="conflicts">⚠️ Спорные</option>
+                <option value="not-mc">⚠️ Не Minecraft</option>
+                <option value="clones">👥 Клоны</option>
             </select>
             <select id="tagFilter">
                 <option value="">🏷️ Любой тег</option>
@@ -226,6 +244,46 @@
             </div>
             <div class="footer-line" id="lastUpdate">—</div>
         </footer>
+    </div>
+
+    <!-- Нижняя навигация (только мобильные) -->
+    <nav class="mobile-nav" id="mobileNav">
+        <button data-action="refresh">🔄</button>
+        <button data-action="filters">⚙️</button>
+        <button data-action="import">📥</button>
+        <button data-action="favorites">⭐</button>
+        <button data-action="menu">☰</button>
+    </nav>
+
+    <!-- Модалка: мобильные фильтры -->
+    <div class="mobile-filters-backdrop" id="mobileFiltersBackdrop">
+        <div class="mobile-filters">
+            <div class="mf-header">
+                <b>Фильтры</b>
+                <button id="mobileFiltersClose">×</button>
+            </div>
+            <div class="mf-body">
+                <label>Поиск <input type="text" id="mfSearch"></label>
+                <label>Статус
+                    <select id="mfFilter">
+                        <option value="all">Все</option>
+                        <option value="online">Онлайн</option>
+                        <option value="offline">Офлайн</option>
+                        <option value="favorites">Избранные</option>
+                    </select>
+                </label>
+                <label>Сортировка
+                    <select id="mfSort">
+                        <option value="status">По статусу</option>
+                        <option value="confidence-desc">По уверенности</option>
+                        <option value="players-desc">Игроков ↓</option>
+                        <option value="players-asc">Игроков ↑</option>
+                        <option value="name-asc">A → Z</option>
+                    </select>
+                </label>
+                <button id="mfApply" class="primary">Применить</button>
+            </div>
+        </div>
     </div>
 
     <input type="file" id="fileInput" accept=".json,application/json" style="display:none;">
