@@ -1,21 +1,21 @@
 [
   {
     "address": "147.185.221.16",
-    "port": 11641,
-    "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21.10"
-  },
-  {
-    "address": "147.185.221.16",
     "port": 11873,
     "online": true,
     "motd": "§bLiminal Industries - Rescripted§r Server",
     "players_online": 0,
     "players_max": 20,
     "version": "1.20.1"
+  },
+  {
+    "address": "147.185.221.16",
+    "port": 11641,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "1.21.10"
   },
   {
     "address": "147.185.221.16",
@@ -58,7 +58,7 @@
     "port": 48135,
     "online": true,
     "motd": "VPOTH30212",
-    "players_online": 0,
+    "players_online": 1,
     "players_max": 20,
     "version": "1.21.1"
   },
@@ -91,19 +91,10 @@
   },
   {
     "address": "147.185.221.17",
-    "port": 47268,
-    "online": true,
-    "motd": "Cuzinho",
-    "players_online": 0,
-    "players_max": 24,
-    "version": "26.3"
-  },
-  {
-    "address": "147.185.221.17",
     "port": 55734,
     "online": true,
     "motd": "A Minecraft Server",
-    "players_online": 0,
+    "players_online": 1,
     "players_max": 20,
     "version": "Paper 26.3"
   },
@@ -172,6 +163,15 @@
   },
   {
     "address": "147.185.221.19",
+    "port": 19274,
+    "online": true,
+    "motd": "Ramblecraft / Ralcraft - Unofficial",
+    "players_online": 0,
+    "players_max": 500,
+    "version": "Velocity 1.7.2-26.2"
+  },
+  {
+    "address": "147.185.221.19",
     "port": 22823,
     "online": true,
     "motd": "RUINS",
@@ -184,7 +184,7 @@
     "port": 26633,
     "online": true,
     "motd": "PianoSMP BACAP Full Release",
-    "players_online": 0,
+    "players_online": 1,
     "players_max": 20,
     "version": "26.2"
   },
@@ -223,6 +223,15 @@
     "players_online": 3,
     "players_max": 100,
     "version": "26.2"
+  },
+  {
+    "address": "147.185.221.19",
+    "port": 44220,
+    "online": true,
+    "motd": "Talcosa - Multi",
+    "players_online": 2,
+    "players_max": 8,
+    "version": "1.20.1"
   },
   {
     "address": "147.185.221.19",
@@ -280,15 +289,6 @@
   },
   {
     "address": "147.185.221.20",
-    "port": 28199,
-    "online": true,
-    "motd": "All of Create Aeronautics - Tom",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21.1"
-  },
-  {
-    "address": "147.185.221.20",
     "port": 28201,
     "online": true,
     "motd": "A Minecraft Server",
@@ -325,6 +325,15 @@
   },
   {
     "address": "147.185.221.21",
+    "port": 16488,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 1,
+    "players_max": 20,
+    "version": "Seed 1.21.11"
+  },
+  {
+    "address": "147.185.221.21",
     "port": 18166,
     "online": true,
     "motd": "Welcome to rine's server\n_",
@@ -343,12 +352,12 @@
   },
   {
     "address": "147.185.221.21",
-    "port": 39322,
+    "port": 33342,
     "online": true,
-    "motd": "All the Mods 9",
+    "motd": "Bienvenido a el servidor (no oficial) de la FP de Escolapios Aluche.",
     "players_online": 0,
     "players_max": 20,
-    "version": "1.20.1"
+    "version": "Paper 26.2"
   },
   {
     "address": "147.185.221.21",
@@ -400,7 +409,7 @@
     "port": 63874,
     "online": true,
     "motd": "Niggars only",
-    "players_online": 1,
+    "players_online": 0,
     "players_max": 20,
     "version": "1.20.1"
   },
@@ -451,15 +460,6 @@
   },
   {
     "address": "147.185.221.22",
-    "port": 19723,
-    "online": true,
-    "motd": "mc Binge server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Spigot 26.2"
-  },
-  {
-    "address": "147.185.221.22",
     "port": 20786,
     "online": true,
     "motd": "§1!Hallaa§e§l Server§6 wieder Back§6§k!",
@@ -469,10 +469,19 @@
   },
   {
     "address": "147.185.221.22",
+    "port": 19723,
+    "online": true,
+    "motd": "mc Binge server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "Spigot 26.2"
+  },
+  {
+    "address": "147.185.221.22",
     "port": 22877,
     "online": true,
     "motd": "I tried to silence my Mother once, boy did I regret that",
-    "players_online": 1,
+    "players_online": 0,
     "players_max": 20,
     "version": "1.20.1"
   },
@@ -508,27 +517,9 @@
     "port": 48046,
     "online": true,
     "motd": "         ======== ✦ OBSCURA ✦ ========\n                  ___ Minecraft 26.3 ___",
-    "players_online": 0,
+    "players_online": 2,
     "players_max": 20,
     "version": "Paper 26.3"
-  },
-  {
-    "address": "147.185.221.22",
-    "port": 55744,
-    "online": true,
-    "motd": "§2GT 24/7 Modpacks§r\n                  §eModpack: StoneBlock 4 v1.19.1",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21.1"
-  },
-  {
-    "address": "147.185.221.22",
-    "port": 55919,
-    "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "26.3"
   },
   {
     "address": "147.185.221.22",
@@ -541,12 +532,21 @@
   },
   {
     "address": "147.185.221.22",
-    "port": 63691,
+    "port": 55919,
     "online": true,
-    "motd": "§r           §bMinecraft Server §ecreated by §6n3koBomb§r\n§l  §a                   ☄Version: §c1.21.11 ⛏",
+    "motd": "A Minecraft Server",
     "players_online": 0,
-    "players_max": 10,
-    "version": "1.21.11"
+    "players_max": 20,
+    "version": "26.3"
+  },
+  {
+    "address": "147.185.221.22",
+    "port": 55744,
+    "online": true,
+    "motd": "§2GT 24/7 Modpacks§r\n                  §eModpack: StoneBlock 4 v1.19.1",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "1.21.1"
   },
   {
     "address": "147.185.221.22",
@@ -556,6 +556,24 @@
     "players_online": 0,
     "players_max": 420,
     "version": "1.21.1"
+  },
+  {
+    "address": "147.185.221.22",
+    "port": 63691,
+    "online": true,
+    "motd": "§r           §bMinecraft Server §ecreated by §6n3koBomb§r\n§l  §a                   ☄Version: §c1.21.11 ⛏",
+    "players_online": 0,
+    "players_max": 10,
+    "version": "1.21.11"
+  },
+  {
+    "address": "147.185.221.23",
+    "port": 9313,
+    "online": true,
+    "motd": "Welcome to Crafty Minecraft.                             Any issues please get in touch via the Discord ",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "Paper 26.2"
   },
   {
     "address": "147.185.221.23",
@@ -568,12 +586,12 @@
   },
   {
     "address": "147.185.221.23",
-    "port": 9313,
+    "port": 17578,
     "online": true,
-    "motd": "Welcome to Crafty Minecraft.                             Any issues please get in touch via the Discord ",
-    "players_online": 0,
+    "motd": "A Minecraft Server",
+    "players_online": 1,
     "players_max": 20,
-    "version": "Paper 26.2"
+    "version": "26.3"
   },
   {
     "address": "147.185.221.23",
@@ -658,15 +676,6 @@
   },
   {
     "address": "147.185.221.25",
-    "port": 23084,
-    "online": true,
-    "motd": "                       SNKA SMP SERVER | 1.7+\n                  ✦ Survival • Events • Community ✦",
-    "players_online": 0,
-    "players_max": 367,
-    "version": "Paper 26.2"
-  },
-  {
-    "address": "147.185.221.25",
     "port": 29795,
     "online": true,
     "motd": "Helooo everyone!!",
@@ -679,7 +688,7 @@
     "port": 30942,
     "online": true,
     "motd": "You as fired up as I am? Sure hope so!",
-    "players_online": 1,
+    "players_online": 0,
     "players_max": 16,
     "version": "Purpur 26.2"
   },
@@ -694,30 +703,12 @@
   },
   {
     "address": "147.185.221.25",
-    "port": 38755,
-    "online": true,
-    "motd": "fumi.24の鯖です",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Paper 1.21.4"
-  },
-  {
-    "address": "147.185.221.25",
     "port": 38757,
     "online": true,
     "motd": "In another few hours the sun will rise",
     "players_online": 0,
     "players_max": 20,
     "version": "Velocity 1.7.2-26.3"
-  },
-  {
-    "address": "147.185.221.25",
-    "port": 39622,
-    "online": true,
-    "motd": "a server?",
-    "players_online": 2,
-    "players_max": 20,
-    "version": "1.21.1"
   },
   {
     "address": "147.185.221.25",
@@ -733,9 +724,18 @@
     "port": 43393,
     "online": true,
     "motd": " -*-*-*- The MasterMindCraft Network -*-*-*-\n   | ONLINE 24/7 |      Outdated      | ONLINE 24/7 |",
-    "players_online": 5,
+    "players_online": 0,
     "players_max": 200000,
     "version": "BungeeCord 1.8.x-26.x"
+  },
+  {
+    "address": "147.185.221.25",
+    "port": 44169,
+    "online": true,
+    "motd": "Poison Horror Map (1.19.2)",
+    "players_online": 0,
+    "players_max": 10,
+    "version": "Paper 1.19.2"
   },
   {
     "address": "147.185.221.25",
@@ -796,7 +796,7 @@
     "port": 42925,
     "online": true,
     "motd": "A Minecraft Server",
-    "players_online": 1,
+    "players_online": 0,
     "players_max": 20,
     "version": "Paper 26.3"
   },
@@ -874,6 +874,24 @@
   },
   {
     "address": "147.185.221.27",
+    "port": 60488,
+    "online": true,
+    "motd": "This is getting expansive",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "Spigot 26.3"
+  },
+  {
+    "address": "147.185.221.27",
+    "port": 61992,
+    "online": true,
+    "motd": "",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "26.3"
+  },
+  {
+    "address": "147.185.221.27",
     "port": 63102,
     "online": true,
     "motd": "           ☽ BatMine ☽ [1.16.5 - 1.21.11]\n         🏹 Выживание для тебя и друзей",
@@ -922,18 +940,9 @@
     "port": 41681,
     "online": true,
     "motd": "Frontier & Festival",
-    "players_online": 3,
+    "players_online": 0,
     "players_max": 10000,
     "version": "Purpur 26.2"
-  },
-  {
-    "address": "147.185.221.28",
-    "port": 53569,
-    "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Paper 1.21.11"
   },
   {
     "address": "147.185.221.28",
@@ -955,6 +964,15 @@
   },
   {
     "address": "147.185.221.29",
+    "port": 11448,
+    "online": true,
+    "motd": "Welcome to the Team Proteus Server!",
+    "players_online": 0,
+    "players_max": 50,
+    "version": "Spigot 26.3"
+  },
+  {
+    "address": "147.185.221.29",
     "port": 13884,
     "online": true,
     "motd": "A Minecraft Server",
@@ -964,12 +982,39 @@
   },
   {
     "address": "147.185.221.29",
+    "port": 15343,
+    "online": true,
+    "motd": "◆ meow ◆",
+    "players_online": 0,
+    "players_max": 88,
+    "version": "Paper 26.3"
+  },
+  {
+    "address": "147.185.221.29",
     "port": 19959,
     "online": true,
     "motd": "                   SANISMP | Sword SMP\n                     Season 3 released",
     "players_online": 0,
     "players_max": 100,
     "version": "Velocity 1.7.2-26.3"
+  },
+  {
+    "address": "147.185.221.29",
+    "port": 31675,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 1,
+    "players_max": 20,
+    "version": "1.20.1"
+  },
+  {
+    "address": "147.185.221.29",
+    "port": 39428,
+    "online": true,
+    "motd": "Nordcom a minecraft world building server.",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "1.20.1"
   },
   {
     "address": "147.185.221.29",
@@ -1002,7 +1047,7 @@
     "address": "147.185.221.30",
     "port": 1721,
     "online": true,
-    "motd": "26.1 ready!\nnew experiences!",
+    "motd": "Welcome travelers\nA new world awaits!",
     "players_online": 0,
     "players_max": 20,
     "version": "26.1.2"
@@ -1012,18 +1057,9 @@
     "port": 64730,
     "online": true,
     "motd": "You are using an outdated client!\nPlease update to the latest version to join.",
-    "players_online": 13,
+    "players_online": 37,
     "players_max": 500,
     "version": "1.7.2-26.3"
-  },
-  {
-    "address": "147.185.221.30",
-    "port": 1769,
-    "online": true,
-    "motd": "BFDIA bordered server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "26.3"
   },
   {
     "address": "147.185.221.29",
@@ -1036,30 +1072,30 @@
   },
   {
     "address": "147.185.221.30",
-    "port": 13602,
+    "port": 1769,
     "online": true,
-    "motd": "§6§l[MDK Team] §e§lNightfallCraft - The Casket of Reveries §c[En reposo]\n§a§l▶ Conéctate para encender el servidor",
+    "motd": "BFDIA bordered server",
     "players_online": 0,
     "players_max": 20,
-    "version": "1.20.1"
+    "version": "26.3"
   },
   {
     "address": "147.185.221.30",
     "port": 14861,
     "online": true,
     "motd": "§cG§eE§9A§2R§f-XV\n§b2.9.0-beta-3",
-    "players_online": 0,
+    "players_online": 1,
     "players_max": 20,
     "version": "1.7.10"
   },
   {
     "address": "147.185.221.30",
-    "port": 22306,
+    "port": 13602,
     "online": true,
-    "motd": "The land of Bruutis the wise, pinkest of them all. Sacrifices must be made to appease the lord",
+    "motd": "§6§l[MDK Team] §e§lNightfallCraft - The Casket of Reveries §c[En reposo]\n§a§l▶ Conéctate para encender el servidor",
     "players_online": 0,
     "players_max": 20,
-    "version": "26.3"
+    "version": "1.20.1"
   },
   {
     "address": "147.185.221.30",
@@ -1072,11 +1108,29 @@
   },
   {
     "address": "147.185.221.30",
+    "port": 22306,
+    "online": true,
+    "motd": "The land of Bruutis the wise, pinkest of them all. Sacrifices must be made to appease the lord",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "26.3"
+  },
+  {
+    "address": "147.185.221.30",
     "port": 26148,
     "online": true,
     "motd": "A Minecraft Server",
     "players_online": 0,
     "players_max": 20,
+    "version": "1.21.1"
+  },
+  {
+    "address": "147.185.221.30",
+    "port": 28650,
+    "online": true,
+    "motd": "EvriDeykaWTF - AOTsborka",
+    "players_online": 3,
+    "players_max": 8,
     "version": "1.21.1"
   },
   {
@@ -1099,12 +1153,12 @@
   },
   {
     "address": "147.185.221.30",
-    "port": 34723,
+    "port": 33845,
     "online": true,
-    "motd": "There are things in§l §rthis world that we will never fully understand §4§o(UNDERSTAND)",
-    "players_online": 0,
-    "players_max": 5,
-    "version": "26.2"
+    "motd": "(t server)^6 GT:New Horizons 2.7.3",
+    "players_online": 1,
+    "players_max": 20,
+    "version": "1.7.10"
   },
   {
     "address": "147.185.221.30",
@@ -1117,19 +1171,19 @@
   },
   {
     "address": "147.185.221.30",
-    "port": 33845,
+    "port": 34723,
     "online": true,
-    "motd": "(t server)^6 GT:New Horizons 2.7.3",
+    "motd": "There are things in§l §rthis world that we will never fully understand §4§o(UNDERSTAND)",
     "players_online": 0,
-    "players_max": 20,
-    "version": "1.7.10"
+    "players_max": 5,
+    "version": "26.2"
   },
   {
     "address": "147.185.221.30",
     "port": 38022,
     "online": true,
     "motd": "A Cobbleverse Server",
-    "players_online": 1,
+    "players_online": 0,
     "players_max": 20,
     "version": "1.21.1"
   },
@@ -1183,7 +1237,7 @@
     "port": 47024,
     "online": true,
     "motd": "You are using an outdated client!\nPlease update to the latest version to join.",
-    "players_online": 13,
+    "players_online": 37,
     "players_max": 500,
     "version": "1.7.2-26.3"
   },
@@ -1261,21 +1315,21 @@
   },
   {
     "address": "147.185.221.31",
-    "port": 5712,
-    "online": true,
-    "motd": "Gwen's Pack Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21.10"
-  },
-  {
-    "address": "147.185.221.31",
     "port": 5753,
     "online": true,
     "motd": "A Minecraft Server",
     "players_online": 0,
     "players_max": 20,
     "version": "Paper 1.21.11"
+  },
+  {
+    "address": "147.185.221.31",
+    "port": 5712,
+    "online": true,
+    "motd": "Gwen's Pack Server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "1.21.10"
   },
   {
     "address": "147.185.221.31",
@@ -1294,6 +1348,15 @@
     "players_online": 0,
     "players_max": 20,
     "version": "Paper 1.21.11"
+  },
+  {
+    "address": "147.185.221.31",
+    "port": 16099,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 3,
+    "players_max": 20,
+    "version": "1.19.2"
   },
   {
     "address": "147.185.221.31",
@@ -1326,10 +1389,19 @@
     "address": "147.185.221.31",
     "port": 29549,
     "online": true,
-    "motd": "     ɪʀᴏɴꜱᴡᴏʀᴅ.ᴘʟ ▪ ꜱᴛʀᴏɴᴀ ᴡᴡᴡ: ᴡᴡᴡ.ɪʀᴏɴꜱᴡᴏʀᴅ.ᴘʟ \n x ꜱᴛᴀʀᴛ ꜱᴇʀᴡᴇʀᴀ ᴡᴋʀᴏᴛᴄᴇ!",
+    "motd": "   ɪʀᴏɴꜱᴡᴏʀᴅ.ᴘʟ ▪ ᴅɪꜱᴄᴏʀᴅ: ᴡᴡᴡ.ɪʀᴏɴꜱᴡᴏʀᴅ.ᴘʟ/ᴅᴄ \n x ꜱᴛᴀʀᴛ ꜱᴇʀᴡᴇʀᴀ ᴡᴋʀᴏᴛᴄᴇ!",
     "players_online": 0,
     "players_max": 500,
     "version": "§c❤ §7ᴡʙɪᴊᴀᴊ! §8→                                                          §a● §f0 §7ɢʀᴀᴄᴢʏ"
+  },
+  {
+    "address": "147.185.221.31",
+    "port": 30904,
+    "online": true,
+    "motd": "taj1994 All the Mods",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "1.21.1"
   },
   {
     "address": "147.185.221.31",
@@ -1345,16 +1417,7 @@
     "port": 35964,
     "online": true,
     "motd": "A Star Technology Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.20.1"
-  },
-  {
-    "address": "147.185.221.31",
-    "port": 39391,
-    "online": true,
-    "motd": "In Search dor Freedom",
-    "players_online": 2,
+    "players_online": 3,
     "players_max": 20,
     "version": "1.20.1"
   },
@@ -1378,21 +1441,21 @@
   },
   {
     "address": "147.185.221.31",
+    "port": 44896,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "1.21.7"
+  },
+  {
+    "address": "147.185.221.31",
     "port": 47134,
     "online": true,
     "motd": "A Minecraft Server",
     "players_online": 0,
     "players_max": 20,
     "version": "1.21.10"
-  },
-  {
-    "address": "147.185.221.31",
-    "port": 46644,
-    "online": true,
-    "motd": "Under New Management",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "26.3"
   },
   {
     "address": "147.185.221.31",
@@ -1405,30 +1468,12 @@
   },
   {
     "address": "147.185.221.31",
-    "port": 56197,
-    "online": true,
-    "motd": "Welcome to JujuLandia2",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Paper 26.2"
-  },
-  {
-    "address": "147.185.221.31",
     "port": 56196,
     "online": true,
     "motd": "JujuLandia | Creative",
     "players_online": 0,
     "players_max": 20,
     "version": "Paper 26.2"
-  },
-  {
-    "address": "147.185.221.31",
-    "port": 57886,
-    "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21.11"
   },
   {
     "address": "147.185.221.31",
@@ -1447,15 +1492,6 @@
     "players_online": 0,
     "players_max": 20,
     "version": "1.21.11"
-  },
-  {
-    "address": "147.185.221.31",
-    "port": 64181,
-    "online": true,
-    "motd": "spoooooky!",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.20.1"
   },
   {
     "address": "147.185.221.180",
@@ -1486,15 +1522,6 @@
   },
   {
     "address": "147.185.221.180",
-    "port": 42896,
-    "online": true,
-    "motd": "waddup",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.20.1"
-  },
-  {
-    "address": "147.185.221.180",
     "port": 42230,
     "online": true,
     "motd": "A Minecraft Server",
@@ -1504,12 +1531,12 @@
   },
   {
     "address": "147.185.221.180",
-    "port": 45218,
+    "port": 42896,
     "online": true,
-    "motd": "A Minecraft Server",
+    "motd": "waddup",
     "players_online": 0,
     "players_max": 20,
-    "version": "Paper 26.3"
+    "version": "1.20.1"
   },
   {
     "address": "147.185.221.180",
@@ -1530,13 +1557,13 @@
     "version": "1.21.10+"
   },
   {
-    "address": "147.185.221.181",
-    "port": 11801,
+    "address": "147.185.221.180",
+    "port": 56375,
     "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
+    "motd": "JUGANDO CON LO TIGUERE DE ALOFOKE",
+    "players_online": 1,
     "players_max": 20,
-    "version": "Paper 1.21.10"
+    "version": "1.16.5"
   },
   {
     "address": "147.185.221.181",
@@ -1546,6 +1573,15 @@
     "players_online": 0,
     "players_max": 20,
     "version": "1.20.1"
+  },
+  {
+    "address": "147.185.221.181",
+    "port": 11801,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "Paper 1.21.10"
   },
   {
     "address": "147.185.221.181",
@@ -1560,7 +1596,7 @@
     "address": "147.185.221.181",
     "port": 40539,
     "online": true,
-    "motd": "FinalSMP [26.2] - Private\nTime: Day - Weather: Sunny",
+    "motd": "FinalSMP [26.2] - Private\nTime: Night - Weather: Sunny",
     "players_online": 0,
     "players_max": 20,
     "version": "Boondit 26.2"
@@ -1597,7 +1633,7 @@
     "port": 63002,
     "online": true,
     "motd": "Shiwawa",
-    "players_online": 0,
+    "players_online": 1,
     "players_max": 20,
     "version": "Paper 26.3"
   },
@@ -1648,21 +1684,21 @@
   },
   {
     "address": "147.185.221.211",
-    "port": 29662,
-    "online": true,
-    "motd": "⎇ The Nylium Network ⎇\n⎇ An Alterhuman Technology Group ⎇",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Velocity 1.7.2-26.2"
-  },
-  {
-    "address": "147.185.221.211",
     "port": 29670,
     "online": true,
     "motd": "MondarizCraft - ¡Faro de Avión!",
     "players_online": 0,
     "players_max": 25,
     "version": "Paper 1.21.8"
+  },
+  {
+    "address": "147.185.221.211",
+    "port": 29662,
+    "online": true,
+    "motd": "⎇ The Nylium Network ⎇\n⎇ An Alterhuman Technology Group ⎇",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "Velocity 1.7.2-26.2"
   },
   {
     "address": "147.185.221.211",
@@ -1714,7 +1750,7 @@
     "port": 47553,
     "online": true,
     "motd": "Aero those Nautics",
-    "players_online": 3,
+    "players_online": 1,
     "players_max": 9,
     "version": "1.21.1"
   },
@@ -1731,8 +1767,8 @@
     "address": "147.185.221.211",
     "port": 60117,
     "online": true,
-    "motd": "§bMCS Ilia. §eLobby §c[1.12～1.21]\n§7オンライン: §a1§8/§a99\n§7Online: §a1§8/§a99",
-    "players_online": 1,
+    "motd": "§bMCS Ilia. §eLobby §c[1.12～1.21]\n§7オンライン人数は §a2§7 人です!\n§7There are §a2§7 players online!",
+    "players_online": 2,
     "players_max": 99,
     "version": "BungeeCord 1.8.x-26.x"
   },
@@ -1765,6 +1801,24 @@
   },
   {
     "address": "147.185.221.212",
+    "port": 2288,
+    "online": true,
+    "motd": "A whole new world(26.3)",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "26.3"
+  },
+  {
+    "address": "147.185.221.212",
+    "port": 2863,
+    "online": true,
+    "motd": "IK BEN BEEEEEEEEEZIG",
+    "players_online": 0,
+    "players_max": 3,
+    "version": "26.3"
+  },
+  {
+    "address": "147.185.221.212",
     "port": 3289,
     "online": true,
     "motd": "A Minecraft Server",
@@ -1783,6 +1837,15 @@
   },
   {
     "address": "147.185.221.212",
+    "port": 5041,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "Paper 1.21.10"
+  },
+  {
+    "address": "147.185.221.212",
     "port": 4737,
     "online": true,
     "motd": "§a§l[SOARING UPDATE!]§e§l The§9§l Republic§f§l of §c§lTethoris",
@@ -1792,39 +1855,12 @@
   },
   {
     "address": "147.185.221.212",
-    "port": 5074,
-    "online": true,
-    "motd": "We Are Dwarfs & We Dig Holes",
-    "players_online": 0,
-    "players_max": 6,
-    "version": "1.21.1"
-  },
-  {
-    "address": "147.185.221.212",
-    "port": 4966,
-    "online": true,
-    "motd": "§6💤 Server is Sleeping\n§fJoin to wake it up!",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21"
-  },
-  {
-    "address": "147.185.221.212",
     "port": 6122,
     "online": true,
     "motd": "§l§a§2§aהראה לי את הרגליים שלך§r\n§cThe Amazing Digital Polycule!",
     "players_online": 0,
     "players_max": 20,
     "version": "1.20.1"
-  },
-  {
-    "address": "147.185.221.212",
-    "port": 5041,
-    "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Paper 1.21.10"
   },
   {
     "address": "147.185.221.212",
@@ -1840,9 +1876,9 @@
     "port": 8866,
     "online": true,
     "motd": "Ryu's Server",
-    "players_online": 1,
+    "players_online": 2,
     "players_max": 10,
-    "version": "Paper 26.2"
+    "version": "Paper 26.3"
   },
   {
     "address": "147.185.221.212",
@@ -1882,15 +1918,6 @@
   },
   {
     "address": "147.185.221.212",
-    "port": 22825,
-    "online": true,
-    "motd": "               Unlimited Adventures [1.21.4]\n         ☠ Dungeons 🪣 New Biomes ⭐ New Mobs ",
-    "players_online": 2,
-    "players_max": 100,
-    "version": "Paper 1.21.4"
-  },
-  {
-    "address": "147.185.221.212",
     "port": 25206,
     "online": true,
     "motd": "              Der LostiSMP \n  release  Season 2 :D  [1.21.11] ",
@@ -1909,39 +1936,21 @@
   },
   {
     "address": "147.185.221.212",
+    "port": 28723,
+    "online": true,
+    "motd": "",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "Paper 26.3"
+  },
+  {
+    "address": "147.185.221.212",
     "port": 35249,
     "online": true,
     "motd": "Welcome to Elle's Minecraft Server",
     "players_online": 0,
     "players_max": 20,
     "version": "1.21.10"
-  },
-  {
-    "address": "147.185.221.212",
-    "port": 37585,
-    "online": true,
-    "motd": "[> Merindukan Kekalahan <]\nVanilla Survival | mc.faaris.id | 26.2",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Paper 26.2"
-  },
-  {
-    "address": "147.185.221.212",
-    "port": 38978,
-    "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21.10"
-  },
-  {
-    "address": "147.185.221.212",
-    "port": 39165,
-    "online": true,
-    "motd": "૮ ˶ᵔ ᵕ ᵔ˶ ა",
-    "players_online": 0,
-    "players_max": 5,
-    "version": "Paper 26.3"
   },
   {
     "address": "147.185.221.212",
@@ -1972,15 +1981,6 @@
   },
   {
     "address": "147.185.221.212",
-    "port": 50753,
-    "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Paper 26.2"
-  },
-  {
-    "address": "147.185.221.212",
     "port": 50482,
     "online": true,
     "motd": "             STi Network · Lag Fixed!        \n          Anarchy • 1.9-1.21.4 • Crystal PvP        ",
@@ -1990,10 +1990,19 @@
   },
   {
     "address": "147.185.221.212",
+    "port": 50753,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "Paper 26.2"
+  },
+  {
+    "address": "147.185.221.212",
     "port": 51141,
     "online": true,
     "motd": "Hello everynyan! :3",
-    "players_online": 1,
+    "players_online": 0,
     "players_max": 20,
     "version": "26.2"
   },
@@ -2017,6 +2026,15 @@
   },
   {
     "address": "147.185.221.212",
+    "port": 62232,
+    "online": true,
+    "motd": "Squirrel Craft Season 2",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "26.2"
+  },
+  {
+    "address": "147.185.221.212",
     "port": 65213,
     "online": true,
     "motd": "Xiaomao/OsewaGakari3 - CrossPlay Server",
@@ -2032,6 +2050,15 @@
     "players_online": 0,
     "players_max": 5,
     "version": "any version"
+  },
+  {
+    "address": "147.185.221.213",
+    "port": 18231,
+    "online": true,
+    "motd": "CherySMP Earth | Thirst, Stamina & Survival",
+    "players_online": 0,
+    "players_max": 100,
+    "version": "Paper 1.21.11"
   },
   {
     "address": "147.185.221.213",
@@ -2098,12 +2125,39 @@
   },
   {
     "address": "147.185.221.215",
+    "port": 20331,
+    "online": true,
+    "motd": "✦ WAVYS WORLD ✦\nsupervivencia con magia",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "1.21.1"
+  },
+  {
+    "address": "147.185.221.215",
     "port": 56506,
     "online": true,
     "motd": "Welcome to The Southern Hospitality",
     "players_online": 0,
     "players_max": 20,
     "version": "1.20.1"
+  },
+  {
+    "address": "147.185.221.215",
+    "port": 61235,
+    "online": true,
+    "motd": "Cobblemon Genesis\nMinecraft 1.21.1 | Cobblemon 1.8.1",
+    "players_online": 0,
+    "players_max": 15,
+    "version": "1.21.1"
+  },
+  {
+    "address": "147.185.221.215",
+    "port": 61319,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "26.3"
   },
   {
     "address": "147.185.221.216",
@@ -2137,18 +2191,9 @@
     "port": 62348,
     "online": true,
     "motd": "We're back by popular demand!",
-    "players_online": 0,
+    "players_online": 3,
     "players_max": 20,
     "version": "1.21.1"
-  },
-  {
-    "address": "147.185.221.223",
-    "port": 1947,
-    "online": true,
-    "motd": "GolemCraft\n",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "Paper 1.21.11"
   },
   {
     "address": "147.185.221.223",
@@ -2167,6 +2212,15 @@
     "players_online": 0,
     "players_max": 20,
     "version": "1.21.1"
+  },
+  {
+    "address": "147.185.221.223",
+    "port": 12594,
+    "online": true,
+    "motd": "                           WrongSMP\n              Survival Multiplayer",
+    "players_online": 420,
+    "players_max": 69,
+    "version": "Velocity 1.7.2-1.21.11"
   },
   {
     "address": "147.185.221.223",
@@ -2206,15 +2260,6 @@
   },
   {
     "address": "147.185.221.223",
-    "port": 48810,
-    "online": true,
-    "motd": "     I---------[ LLH Central ]---------I\n  ✦ ✦ ✦ The Private Network Of LLH ✦ ✦ ✦",
-    "players_online": 0,
-    "players_max": 67,
-    "version": "Velocity 1.7.2-1.21.11"
-  },
-  {
-    "address": "147.185.221.223",
     "port": 48962,
     "online": true,
     "motd": "Unofficial OPUS server",
@@ -2233,6 +2278,15 @@
   },
   {
     "address": "147.185.221.223",
+    "port": 54967,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 0,
+    "players_max": 2027,
+    "version": "26.3"
+  },
+  {
+    "address": "147.185.221.223",
     "port": 54071,
     "online": true,
     "motd": "A Minecraft Server",
@@ -2242,18 +2296,27 @@
   },
   {
     "address": "147.185.221.223",
-    "port": 54967,
+    "port": 56881,
     "online": true,
-    "motd": "A Minecraft Server",
+    "motd": "All the Mods 9",
     "players_online": 0,
-    "players_max": 2027,
-    "version": "26.3"
+    "players_max": 20,
+    "version": "1.20.1"
   },
   {
     "address": "147.185.221.224",
     "port": 5050,
     "online": true,
     "motd": "§6§l§nEastOnline§f - Förmodligen mitt största misstag§r\n§l   §f        ♫ Now Playing: Mishigan Wolf Pack",
+    "players_online": 1,
+    "players_max": 20,
+    "version": "26.2"
+  },
+  {
+    "address": "147.185.221.224",
+    "port": 5264,
+    "online": true,
+    "motd": "§f§kW §cThe End Of The World! §f§kW",
     "players_online": 0,
     "players_max": 20,
     "version": "26.2"
@@ -2323,21 +2386,21 @@
   },
   {
     "address": "147.185.221.224",
+    "port": 23540,
+    "online": true,
+    "motd": "            SMHP Updated to 26.2\n        SMP made better | Public, join now!",
+    "players_online": 0,
+    "players_max": 50,
+    "version": "Purpur 26.2"
+  },
+  {
+    "address": "147.185.221.224",
     "port": 26512,
     "online": true,
     "motd": "server is under maintenance due to file corruption for the foreseeable future. i am lazy, sorry",
     "players_online": 0,
     "players_max": 20,
     "version": "Paper 1.21.11"
-  },
-  {
-    "address": "147.185.221.224",
-    "port": 26861,
-    "online": true,
-    "motd": "§l§2S§cp§6i§2c§ce§6b§2a§cr §r§3GTCPM §cTweaked",
-    "players_online": 0,
-    "players_max": 6,
-    "version": "1.20.1"
   },
   {
     "address": "147.185.221.224",
@@ -2350,16 +2413,25 @@
   },
   {
     "address": "147.185.221.224",
-    "port": 28484,
+    "port": 26861,
     "online": true,
-    "motd": "Inofficiella LäSKM Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "26.3"
+    "motd": "§l§2S§cp§6i§2c§ce§6b§2a§cr §r§3GTCPM §cTweaked",
+    "players_online": 1,
+    "players_max": 6,
+    "version": "1.20.1"
   },
   {
     "address": "147.185.221.224",
     "port": 28563,
+    "online": true,
+    "motd": "A Minecraft Server",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "26.2"
+  },
+  {
+    "address": "147.185.221.224",
+    "port": 31284,
     "online": true,
     "motd": "A Minecraft Server",
     "players_online": 0,
@@ -2377,30 +2449,21 @@
   },
   {
     "address": "147.185.221.224",
-    "port": 32412,
-    "online": true,
-    "motd": "Jensies ATM10",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21.1"
-  },
-  {
-    "address": "147.185.221.224",
-    "port": 31284,
-    "online": true,
-    "motd": "A Minecraft Server",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "26.2"
-  },
-  {
-    "address": "147.185.221.224",
     "port": 33145,
     "online": true,
     "motd": "DungeonCraft",
     "players_online": 0,
     "players_max": 20,
     "version": "Paper 1.21.8"
+  },
+  {
+    "address": "147.185.221.224",
+    "port": 32412,
+    "online": true,
+    "motd": "Jensies ATM10",
+    "players_online": 0,
+    "players_max": 20,
+    "version": "1.21.1"
   },
   {
     "address": "147.185.221.224",
@@ -2428,15 +2491,6 @@
     "players_online": 0,
     "players_max": 20,
     "version": "26.3"
-  },
-  {
-    "address": "147.185.221.224",
-    "port": 57748,
-    "online": true,
-    "motd": "All the Mons",
-    "players_online": 0,
-    "players_max": 20,
-    "version": "1.21.1"
   },
   {
     "address": "147.185.221.224",
@@ -2502,15 +2556,6 @@
     "version": "1.21.1"
   },
   {
-    "address": "147.185.221.225",
-    "port": 64589,
-    "online": true,
-    "motd": "All in One 1.5.4 - Servidor local",
-    "players_online": 0,
-    "players_max": 10,
-    "version": "1.16.5"
-  },
-  {
     "address": "147.185.221.229",
     "port": 11617,
     "online": true,
@@ -2533,7 +2578,7 @@
     "port": 21548,
     "online": true,
     "motd": "        > Project Furina Network (v2)\n             > project-furina.com",
-    "players_online": 2,
+    "players_online": 0,
     "players_max": 500,
     "version": "Velocity 1.7.2-26.2"
   },
